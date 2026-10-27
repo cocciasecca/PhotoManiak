@@ -28,10 +28,10 @@ class RangeSource(private val dav: DriveClient, private val path: String): Media
         if (size == 0) return 0
         if (getSize() >= 0 && position >= length) return -1
         val wanted = minOf(size, 256 * 1024)
-        if (transferred + wanted > 24L * 1024 * 1024) throw IOException("Limite lettura metadati video")
+        if (transferred + wanted > 24L * 1024 * 1024) throw IOException("Video metadata read limit reached")
         return dav.http.newCall(Request.Builder().url(resolvedUrl ?: dav.url(path)).header("Range", "bytes=$position-${position + wanted - 1}").build()).execute().use {
             dav.checkResponse(it)
-            if (position > 0 && it.code != 206) throw IOException("Il server non supporta le letture parziali")
+            if (position > 0 && it.code != 206) throw IOException("The server does not support partial reads")
             val stream = it.body?.byteStream() ?: return@use -1
             var total = 0
             while (total < wanted) { val n = stream.read(buffer, offset + total, wanted - total); if(n < 0) break; total += n }
@@ -42,8 +42,8 @@ class RangeSource(private val dav: DriveClient, private val path: String): Media
     override fun close() = Unit
 }
 class LimitedStream(input: InputStream, private var remaining: Long): FilterInputStream(input) {
-    override fun read(): Int { if(remaining <= 0) throw IOException("Limite metadati raggiunto"); val n = super.read(); if(n >= 0) remaining--; return n }
-    override fun read(b: ByteArray, off: Int, len: Int): Int { if(len == 0) return 0; if(remaining <= 0) throw IOException("Limite metadati raggiunto"); val n = `in`.read(b,off,minOf(len.toLong(),remaining).toInt()); if(n > 0) remaining -= n; return n }
+    override fun read(): Int { if(remaining <= 0) throw IOException("Metadata read limit reached"); val n = super.read(); if(n >= 0) remaining--; return n }
+    override fun read(b: ByteArray, off: Int, len: Int): Int { if(len == 0) return 0; if(remaining <= 0) throw IOException("Metadata read limit reached"); val n = `in`.read(b,off,minOf(len.toLong(),remaining).toInt()); if(n > 0) remaining -= n; return n }
     override fun skip(n: Long): Long { val skipped = `in`.skip(minOf(n,remaining)); remaining -= skipped; return skipped }
 }
 object MediaReader {
@@ -60,7 +60,7 @@ object MediaReader {
         val req = Request.Builder().url(dav.url(entry.path)).header("Range","bytes=0-16777215").build()
         return dav.http.newCall(req).execute().use { response ->
             dav.checkResponse(response)
-            val stream = response.body?.byteStream() ?: throw IOException("File vuoto")
+            val stream = response.body?.byteStream() ?: throw IOException("Empty file")
             val exif = ExifInterface(LimitedStream(stream,16L*1024*1024))
             val tags = mutableMapOf<String,String>()
             fun add(key: String, dateTag: String, offsetTag: String, subsecTag: String, subsecKey: String) {

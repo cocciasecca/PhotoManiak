@@ -26,6 +26,6 @@ class DatesTest {
     }
     @Test fun filenameFallback() { assertEquals("2026-10-12",Dates.resolve(emptyMap(),"IMG_20261012_153012.jpg",0).day) }
     @Test fun whatsappFilename() { assertEquals("2024-03-02",Dates.resolve(emptyMap(),"IMG-20240302-WA0001.jpg",0).day) }
-    @Test fun noGuessingEuropeanDate() { assertEquals("Data sconosciuta",Dates.resolve(emptyMap(),"02-03-2024.jpg",0).source) }
+    @Test fun noGuessingEuropeanDate() { assertEquals("Unknown date",Dates.resolve(emptyMap(),"02-03-2024.jpg",0).source) }
     @Test fun remoteFallbackIsNotDownloadTime() { assertEquals(123456789000L,Dates.resolve(emptyMap(),"plain.jpg",123456789000L).millis) }
 }

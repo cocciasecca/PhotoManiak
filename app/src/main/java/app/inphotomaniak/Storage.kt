@@ -42,6 +42,8 @@ class Settings(context: Context) {
         return FolderRules(read("included"), read("excluded"))
     }
     fun save(rules: FolderRules) { check(prefs.edit().putString("included", JSONArray(rules.included.toList()).toString()).putString("excluded", JSONArray(rules.excluded.toList()).toString()).commit()) }
+    fun thumbnailSize(): ThumbnailSize = ThumbnailSize.entries.firstOrNull { it.name == prefs.getString("thumbnail_size", null) } ?: ThumbnailSize.MEDIUM
+    fun save(size: ThumbnailSize) { check(prefs.edit().putString("thumbnail_size", size.name).commit()) }
     fun clear() { check(prefs.edit().clear().commit()) }
 }
 class AssetDb(context: Context): SQLiteOpenHelper(context, "gallery.db", null, 1) {
@@ -60,7 +62,7 @@ class AssetDb(context: Context): SQLiteOpenHelper(context, "gallery.db", null, 1
             assets.forEach { a -> db.insertWithOnConflict("assets",null,ContentValues().apply {
                 put("path",a.entry.path);put("name",a.entry.name);put("mime",a.entry.mime);put("modified",a.entry.modified);put("etag",a.entry.etag)
                 put("captured",a.date.millis);put("day",a.date.day);put("source",a.date.source);put("metadata",if(a.metadataRead) 1 else 0)
-            },SQLiteDatabase.CONFLICT_REPLACE).also { check(it != -1L) { "Impossibile salvare l’indice locale" } } }
+            },SQLiteDatabase.CONFLICT_REPLACE).also { check(it != -1L) { "Could not save the local index" } } }
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }

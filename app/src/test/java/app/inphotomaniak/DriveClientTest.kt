@@ -33,7 +33,7 @@ class DriveClientTest {
     @Test fun unauthorizedTokenHasActionableError() { MockWebServer().use { server ->
         server.enqueue(MockResponse().setResponseCode(401))
         val error=assertThrows(IOException::class.java) { DriveClient(account,server.url("/"),0).list("/") }
-        assertTrue(error.message!!.contains("Token"))
+        assertTrue(error.message!!.contains("token",ignoreCase=true))
     } }
     @Test fun writesNeverReachNetwork() { MockWebServer().use { server ->
         val client=DriveClient(account,server.url("/"),0)

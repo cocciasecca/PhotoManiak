@@ -36,6 +36,38 @@ class DeviceTest {
         val item=DriveClient.parsePage(json,"/").entries.single()
         assertTrue(item.directory);assertEquals("Foto PC",item.name)
     }
+    @Test fun thumbnailSizeSurvivesRestartAndInvalidValuesFallBack() {
+        val settings=Settings(context)
+        try {
+            settings.clear()
+            assertEquals(ThumbnailSize.MEDIUM,settings.thumbnailSize())
+            for(size in ThumbnailSize.entries) {
+                settings.save(size)
+                assertEquals(size,Settings(context).thumbnailSize())
+            }
+            context.getSharedPreferences("settings",0).edit().putString("thumbnail_size","future-value").commit()
+            assertEquals(ThumbnailSize.MEDIUM,Settings(context).thumbnailSize())
+        } finally { settings.clear() }
+    }
+    @Test fun sharingGrantsOnlyReadAccessToTheOriginalCopy() {
+        val directory=java.io.File(context.cacheDir,"shared/test").apply { mkdirs() }
+        val file=java.io.File(directory,"photo.jpg").apply { writeBytes(byteArrayOf(1,2,3,4)) }
+        try {
+            val intent=ShareFiles.sendIntent(context,file,"image/*")
+            assertEquals(android.content.Intent.ACTION_SEND,intent.action)
+            assertEquals("image/jpeg",intent.type)
+            val uri=intent.clipData!!.getItemAt(0).uri
+            assertEquals("content",uri.scheme)
+            assertEquals(context.packageName+".files",uri.authority)
+            assertTrue(intent.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            assertEquals(0,intent.flags and android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            assertNull(intent.getStringExtra(android.content.Intent.EXTRA_TEXT))
+            context.contentResolver.openInputStream(uri)!!.use { assertArrayEquals(file.readBytes(),it.readBytes()) }
+            assertThrows(IllegalArgumentException::class.java) {
+                ShareFiles.sendIntent(context,java.io.File(context.cacheDir,"private.jpg"),"image/jpeg")
+            }
+        } finally { directory.deleteRecursively() }
+    }
     @Test fun folderSelectionSurvivesRestart() {
         val rules=FolderRules(setOf("/Foto/","/Viaggi/"),setOf("/Foto/Privato/"))
         try { Settings(context).save(rules);assertEquals(rules,Settings(context).rules()) }

@@ -1,6 +1,10 @@
 package app.inphotomaniak
 
 import android.os.Bundle
+import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
+import kotlinx.coroutines.CancellationException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -56,6 +60,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity: ComponentActivity() {
+    override fun attachBaseContext(base: Context) {
+        val config = Configuration(base.resources.configuration).apply { setLocale(Locale.ENGLISH) }
+        super.attachBaseContext(base.createConfigurationContext(config))
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -82,12 +90,12 @@ class MainActivity: ComponentActivity() {
         Viewer(viewerAssets,viewerAssets.indexOfFirst { it.entry.path==current },model) { selected=null }; return
     }
     Scaffold(
-        topBar={ TopAppBar(title={ Column { Text("inPho(to)Maniak",fontWeight=FontWeight.Bold); Text("Il tuo archivio, da riscoprire",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary) } }, actions={
-            if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,"Interrompi scansione") }
-            else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,"Aggiorna libreria") }
+        topBar={ TopAppBar(title={ Column { Text("PhotoManiak",fontWeight=FontWeight.Bold); Text("Rediscover your memories",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary) } }, actions={
+            if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,"Stop scanning") }
+            else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,"Refresh library") }
         }) },
         bottomBar={ NavigationBar {
-            listOf(Triple("timeline","Foto",Icons.Outlined.PhotoLibrary),Triple("folders","Cartelle",Icons.Outlined.Folder),Triple("settings","Account",Icons.Outlined.PersonOutline)).forEach { (key,label,icon) ->
+            listOf(Triple("timeline","Photos",Icons.Outlined.PhotoLibrary),Triple("folders","Folders",Icons.Outlined.Folder),Triple("settings","Settings",Icons.Outlined.Settings)).forEach { (key,label,icon) ->
                 NavigationBarItem(selected=s.screen==key,onClick={model.screen(key)},icon={Icon(icon,label)},label={Text(label)})
             }
         } }
@@ -110,22 +118,22 @@ class MainActivity: ComponentActivity() {
     Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(28.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
         Spacer(Modifier.height(28.dp))
         Icon(Icons.Outlined.FilterVintage,null,Modifier.size(58.dp),tint=MaterialTheme.colorScheme.primary)
-        Text("I tuoi ricordi.\nIl tuo kDrive.",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold)
-        Text("Una nuova prospettiva sulle tue foto e sui tuoi video. Scegli le cartelle e ritrova ogni momento nella sua data.",color=MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedTextField(id,{id=it},Modifier.fillMaxWidth(),label={Text("ID kDrive")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true,enabled=!s.busy)
-        OutlinedTextField(token,{token=it},Modifier.fillMaxWidth(),label={Text("Token API Infomaniak")},visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,enabled=!s.busy)
-        Text("Trovi l’ID nell’indirizzo di kDrive, dopo /drive/. Genera un token con il permesso drive e incollalo qui. La password dell’account non serve.",style=MaterialTheme.typography.bodySmall)
+        Text("Your memories.\nYour kDrive.",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold)
+        Text("A fresh view of your photos and videos. Choose your folders and revisit each moment by its capture date.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(id,{id=it},Modifier.fillMaxWidth(),label={Text("kDrive ID")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true,enabled=!s.busy)
+        OutlinedTextField(token,{token=it},Modifier.fillMaxWidth(),label={Text("Infomaniak API token")},visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,enabled=!s.busy)
+        Text("Find your ID in the kDrive web address, after /drive/. Create a token with the drive scope and paste it here. Your account password is not needed.",style=MaterialTheme.typography.bodySmall)
         s.error?.let { ErrorCard(it,model::clearError) }
         Button(onClick={model.login(id,token)},Modifier.fillMaxWidth().height(54.dp),enabled=!s.busy && id.isNotBlank() && token.isNotBlank()) {
-            if(s.busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp) else Text("Collega il tuo kDrive")
+            if(s.busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp) else Text("Connect your kDrive")
         }
-        TextButton(onClick={uri.openUri("https://manager.infomaniak.com/v3/ng/accounts/token/list")}) { Text("Genera il token su Infomaniak") }
-        Text("I file restano nel tuo cloud. L’app legge foto e video e conserva una cache privata sul dispositivo.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick={uri.openUri("https://manager.infomaniak.com/v3/ng/accounts/token/list")}) { Text("Create a token on Infomaniak") }
+        Text("Your files stay in your cloud. The app reads photos and videos and keeps a private cache on this device.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 @Composable private fun ErrorCard(message: String,dismiss: () -> Unit) {
     Surface(color=MaterialTheme.colorScheme.errorContainer,shape=RoundedCornerShape(16.dp),modifier=Modifier.padding(12.dp).fillMaxWidth()) {
-        Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) { Text(message,Modifier.weight(1f),color=MaterialTheme.colorScheme.onErrorContainer); IconButton(onClick=dismiss) { Icon(Icons.Outlined.Close,"Chiudi messaggio") } }
+        Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) { Text(message,Modifier.weight(1f),color=MaterialTheme.colorScheme.onErrorContainer); IconButton(onClick=dismiss) { Icon(Icons.Outlined.Close,"Dismiss message") } }
     }
 }
 @Composable private fun FolderScreen(s: GalleryState,model: GalleryModel) {
@@ -133,47 +141,47 @@ class MainActivity: ComponentActivity() {
     BackHandler(s.path!="/") { model.browse(parent(s.path)) }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal=20.dp,vertical=12.dp)) {
-            Text("Scegli cosa ritrovare",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
-            Text("Le cartelle incluse comprendono tutti i livelli sottostanti. Puoi escludere singole sottocartelle.",style=MaterialTheme.typography.bodyMedium)
+            Text("Choose your folders",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
+            Text("Included folders cover every level below them. You can exclude individual subfolders.",style=MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment=Alignment.CenterVertically) {
-                IconButton(onClick={model.browse(parent(s.path))},enabled=s.path!="/" && !s.busy) { Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Cartella superiore") }
+                IconButton(onClick={model.browse(parent(s.path))},enabled=s.path!="/" && !s.busy) { Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Parent folder") }
                 Text(DriveClient.displayPath(s.path),Modifier.weight(1f),style=MaterialTheme.typography.labelLarge)
             }
             RuleButtons(s.path,s.rules,enabled,model)
         }
         LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            if(s.folders.isEmpty() && !s.busy) item { Text("Nessuna sottocartella",Modifier.padding(16.dp),color=MaterialTheme.colorScheme.onSurfaceVariant) }
+            if(s.folders.isEmpty() && !s.busy) item { Text("No subfolders",Modifier.padding(16.dp),color=MaterialTheme.colorScheme.onSurfaceVariant) }
             items(s.folders,key={it.path}) { folder ->
                 Surface(shape=RoundedCornerShape(16.dp),color=MaterialTheme.colorScheme.surfaceVariant) {
                     Column(Modifier.padding(12.dp)) {
                         Row(Modifier.fillMaxWidth().clickable(enabled=!s.busy){model.browse(folder.path)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Folder,null,tint=MaterialTheme.colorScheme.secondary)
                             Text(folder.name,Modifier.weight(1f).padding(horizontal=12.dp),fontWeight=FontWeight.Medium)
-                            Icon(Icons.Outlined.ChevronRight,"Apri ${folder.name}")
+                            Icon(Icons.Outlined.ChevronRight,"Open ${folder.name}")
                         }
                         RuleButtons(folder.path,s.rules,enabled,model)
                     }
                 }
             }
         }
-        Button(onClick={model.screen("timeline");model.refresh()},enabled=enabled && s.rules.included.isNotEmpty(),modifier=Modifier.fillMaxWidth().padding(16.dp)) { Text("Mostra la mia libreria") }
+        Button(onClick={model.screen("timeline");model.refresh()},enabled=enabled && s.rules.included.isNotEmpty(),modifier=Modifier.fillMaxWidth().padding(16.dp)) { Text("Show my library") }
     }
 }
 private fun parent(path: String) = path.trimEnd('/').substringBeforeLast('/',"").ifEmpty { "" } + "/"
 @Composable private fun RuleButtons(path: String,rules: FolderRules,enabled: Boolean,model: GalleryModel) {
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected=path in rules.included,onClick={model.rule(path,if(path in rules.included) 0 else 1)},enabled=enabled,label={Text("Includi")})
-        FilterChip(selected=path in rules.excluded,onClick={model.rule(path,if(path in rules.excluded) 0 else 2)},enabled=enabled,label={Text("Escludi")})
-        if(path !in rules.included && path !in rules.excluded) Text(if(rules.excluded(path)) "Esclusa" else if(rules.accepts(path)) "Inclusa" else "",Modifier.align(Alignment.CenterVertically),style=MaterialTheme.typography.labelSmall)
+        FilterChip(selected=path in rules.included,onClick={model.rule(path,if(path in rules.included) 0 else 1)},enabled=enabled,label={Text("Include")})
+        FilterChip(selected=path in rules.excluded,onClick={model.rule(path,if(path in rules.excluded) 0 else 2)},enabled=enabled,label={Text("Exclude")})
+        if(path !in rules.included && path !in rules.excluded) Text(if(rules.excluded(path)) "Excluded" else if(rules.accepts(path)) "Included" else "",Modifier.align(Alignment.CenterVertically),style=MaterialTheme.typography.labelSmall)
     }
 }
 @Composable private fun Timeline(s: GalleryState,model: GalleryModel,onOpen: (Asset)->Unit) {
     if(s.assets.isEmpty()) {
         Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
             Icon(Icons.Outlined.PhotoLibrary,null,Modifier.size(64.dp),tint=MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(20.dp));Text("Spazio ai tuoi ricordi",style=MaterialTheme.typography.headlineSmall)
-            Text(if(s.scanning) "Sto esplorando le cartelle che hai scelto…" else if(s.rules.included.isEmpty()) "Scegli le cartelle kDrive da riunire nella tua timeline." else "Premi Aggiorna per cercare foto e video nelle cartelle selezionate.",Modifier.padding(vertical=12.dp))
-            if(s.rules.included.isEmpty()) Button(onClick={model.screen("folders")}) { Text("Scegli le cartelle") }
+            Spacer(Modifier.height(20.dp));Text("Room for your memories",style=MaterialTheme.typography.headlineSmall)
+            Text(if(s.scanning) "Exploring your selected folders…" else if(s.rules.included.isEmpty()) "Choose the kDrive folders to bring together in your timeline." else "Tap Refresh to find photos and videos in your selected folders.",Modifier.padding(vertical=12.dp))
+            if(s.rules.included.isEmpty()) Button(onClick={model.screen("folders")}) { Text("Choose folders") }
         };return
     }
     val grid = rememberLazyGridState()
@@ -186,38 +194,38 @@ private fun parent(path: String) = path.trimEnd('/').substringBeforeLast('/',"")
     var showMonths by remember { mutableStateOf(false) }
     Column {
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text("La tua timeline",Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+            Text("Your timeline",Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
             Box {
                 TextButton(onClick={showMonths=true}) {
                     Icon(Icons.Outlined.CalendarMonth,null)
-                    Text("Vai a")
+                    Text("Jump to")
                 }
                 DropdownMenu(expanded=showMonths,onDismissRequest={showMonths=false}) {
                     months.forEach { (month,index) ->
                         DropdownMenuItem(
-                            text={Text(month.ifEmpty { "Senza data" })},
+                            text={Text(month.ifEmpty { "No date" })},
                             onClick={showMonths=false;scope.launch { grid.scrollToItem(index) }}
                         )
                     }
                 }
             }
         }
-        LazyVerticalGrid(columns=GridCells.Adaptive(112.dp),state=grid,contentPadding=PaddingValues(3.dp),horizontalArrangement=Arrangement.spacedBy(3.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-            item(span={GridItemSpan(maxLineSpan)},key="count") { Text("${s.assets.size} ricordi · dal tuo kDrive",Modifier.padding(horizontal=17.dp,vertical=8.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+        LazyVerticalGrid(columns=GridCells.Adaptive(s.thumbnailSize.minWidth.dp),state=grid,contentPadding=PaddingValues(3.dp),horizontalArrangement=Arrangement.spacedBy(3.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+            item(span={GridItemSpan(maxLineSpan)},key="count") { Text("${s.assets.size} memories · from your kDrive",Modifier.padding(horizontal=17.dp,vertical=8.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
             groups.forEach { (day,assets) ->
                 item(span={GridItemSpan(maxLineSpan)},key="day:$day") { Text(dayLabel(day),Modifier.padding(start=17.dp,top=22.dp,bottom=10.dp),style=MaterialTheme.typography.titleSmall) }
                 items(assets,key={it.entry.path}) { asset ->
                     Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(5.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onOpen(asset) }) {
                         Photo(asset,model,Modifier.fillMaxSize(),ContentScale.Crop)
                         if(asset.entry.video) Icon(Icons.Outlined.PlayCircle,"Video",Modifier.align(Alignment.BottomEnd).padding(6.dp),tint=Color.White)
-                        if(!asset.metadataRead) Icon(Icons.Outlined.Schedule,"Data provvisoria",Modifier.align(Alignment.TopEnd).padding(6.dp).size(16.dp),tint=Color.White)
+                        if(!asset.metadataRead) Icon(Icons.Outlined.Schedule,"Provisional date",Modifier.align(Alignment.TopEnd).padding(6.dp).size(16.dp),tint=Color.White)
                     }
                 }
             }
         }
     }
 }
-private fun dayLabel(day: String) = runCatching { LocalDate.parse(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy",Locale.getDefault())) }.getOrDefault("Data sconosciuta")
+private fun dayLabel(day: String) = runCatching { LocalDate.parse(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy",Locale.ENGLISH)) }.getOrDefault("Unknown date")
 @Composable private fun Photo(asset: Asset,model: GalleryModel,modifier: Modifier,scale: ContentScale) {
     val context=LocalContext.current
     var failed by remember(asset.entry.path) { mutableStateOf(false) }
@@ -228,31 +236,42 @@ private fun dayLabel(day: String) = runCatching { LocalDate.parse(day).format(Da
     Box(modifier,contentAlignment=Alignment.Center) {
         Icon(Icons.Outlined.Image,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
         AsyncImage(model=ImageRequest.Builder(context).data(imageUrl.toString()).memoryCacheKey(cacheKey).diskCacheKey(cacheKey).crossfade(true).build(),imageLoader=loader,contentDescription=asset.entry.name,modifier=Modifier.fillMaxSize(),contentScale=scale,onError={failed=true})
-        if(failed) Text("Anteprima non disponibile",Modifier.background(Color.Black.copy(alpha=.6f)).padding(4.dp),style=MaterialTheme.typography.labelSmall)
+        if(failed) Text("Preview unavailable",Modifier.background(Color.Black.copy(alpha=.6f)).padding(4.dp),style=MaterialTheme.typography.labelSmall)
     }
 }
-@Composable private fun SettingsScreen(s: GalleryState,model: GalleryModel) {
+@Composable internal fun SettingsScreen(s: GalleryState,model: GalleryModel) {
     var confirm by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
-        Text("Il tuo spazio",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
-        Text("Accesso con token personale");Text("kDrive ${s.account?.driveId}",color=MaterialTheme.colorScheme.primary)
+        Text("Settings",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
+        Text("Thumbnail size",style=MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            ThumbnailSize.entries.forEach { size ->
+                FilterChip(selected=s.thumbnailSize==size,onClick={model.thumbnailSize(size)},enabled=!s.busy,label={Text(size.label)})
+            }
+        }
         HorizontalDivider()
-        Text("${s.rules.included.size} cartelle incluse · ${s.rules.excluded.size} escluse")
-        Text("Cache immagini e miniature fino a 256 MB. L’indice delle date resta sul dispositivo.")
-        Text("La prima scansione legge i metadati via rete. Le date provvisorie vengono riprovate al prossimo aggiornamento. La lettura EXIF/XMP segue le priorità di Immich per i tag supportati; alcuni formati proprietari possono richiedere il fallback.",style=MaterialTheme.typography.bodyMedium)
-        Text("inPho(to)Maniak · 0.2.0\nApp indipendente, non affiliata a Infomaniak.",style=MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning) { Text("Scollega account e svuota dati locali") }
+        Text("Signed in with a personal token");Text("kDrive ${s.account?.driveId}",color=MaterialTheme.colorScheme.primary)
+        HorizontalDivider()
+        Text("${s.rules.included.size} included folders · ${s.rules.excluded.size} excluded")
+        Text("Image and thumbnail cache up to 256 MB. The date index stays on this device.")
+        Text("The first scan reads metadata over the network. Provisional dates are retried on the next refresh. EXIF/XMP dates follow Immich-inspired priorities for supported tags; some proprietary formats may need a fallback.",style=MaterialTheme.typography.bodyMedium)
+        Text("PhotoManiak · 0.3.0\nIndependent app, not affiliated with Infomaniak.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning) { Text("Sign out and clear local data") }
     }
-    if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text("Scollegare questo account?")},text={Text("Credenziali, selezione delle cartelle, indice e cache verranno rimossi da questo dispositivo. Potrai collegare un altro account.")},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text("Scollega") }},dismissButton={TextButton(onClick={confirm=false}) { Text("Annulla") }})
+    if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text("Sign out of this account?")},text={Text("Credentials, folder selections, preferences, index and cache will be removed from this device. You can then connect another account.")},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text("Sign out") }},dismissButton={TextButton(onClick={confirm=false}) { Text("Cancel") }})
 }
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun Viewer(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
+@Composable internal fun Viewer(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
     val pager=rememberPagerState(initialPage=initial) { assets.size }
     var details by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember { mutableStateOf(false) }
+    var shareError by remember { mutableStateOf<String?>(null) }
     BackHandler { onClose() }
-    Scaffold(containerColor=Color.Black,topBar={TopAppBar(title={Text("${pager.currentPage+1} / ${assets.size}")},navigationIcon={IconButton(onClick=onClose){Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Torna alla timeline")}},actions={IconButton(onClick={details=true}){Icon(Icons.Outlined.Info,"Dettagli")}})}) { padding ->
-        HorizontalPager(state=pager,modifier=Modifier.padding(padding).fillMaxSize(),key={assets[it].entry.path}) { index ->
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=72.dp),key={assets[it].entry.path}) { index ->
             val item=assets[index]
             if(item.entry.video) { if(index==pager.currentPage) VideoPlayer(item,model) }
             else {
@@ -267,8 +286,35 @@ private fun dayLabel(day: String) = runCatching { LocalDate.parse(day).format(Da
                 Photo(item,model,Modifier.fillMaxSize().onSizeChanged { dimensions=it }.transformable(transform,canPan={zoom>1f}).graphicsLayer(scaleX=zoom,scaleY=zoom,translationX=x,translationY=y),ContentScale.Fit)
             }
         }
+        IconButton(onClick=onClose,modifier=Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(8.dp).background(Color.Black.copy(alpha=.45f),RoundedCornerShape(50))) {
+            Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Back to timeline",tint=Color.White)
+        }
+        Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding().fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
+            shareError?.let { ErrorCard(it) { shareError=null } }
+            Row(Modifier.padding(horizontal=24.dp,vertical=8.dp),horizontalArrangement=Arrangement.spacedBy(32.dp)) {
+                TextButton(enabled=!sharing,onClick={
+                    val selectedAsset=asset
+                    sharing=true;shareError=null
+                    scope.launch {
+                        try {
+                            val intent=ShareFiles.prepare(context,requireNotNull(model.dav),selectedAsset.entry)
+                            context.startActivity(Intent.createChooser(intent,"Share"))
+                        } catch(e: CancellationException) { throw e }
+                        catch(e: Exception) { shareError=e.message ?: "Could not share this file. Please try again." }
+                        finally { sharing=false }
+                    }
+                }) {
+                    if(sharing) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)
+                    else Icon(Icons.Outlined.Share,null)
+                    Spacer(Modifier.width(8.dp));Text(if(sharing) "Preparing…" else "Share")
+                }
+                TextButton(onClick={details=true}) {
+                    Icon(Icons.Outlined.Info,null);Spacer(Modifier.width(8.dp));Text("Info")
+                }
+            }
+        }
     }
-    if(details) AlertDialog(onDismissRequest={details=false},title={Text(asset.entry.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {Text(dayLabel(asset.date.day));Text("Data da: ${asset.date.source}${if(!asset.metadataRead) " (provvisoria)" else ""}");Text(DriveClient.displayPath(asset.entry.path))}},confirmButton={TextButton(onClick={details=false}){Text("Chiudi")}})
+    if(details) AlertDialog(onDismissRequest={details=false},title={Text(asset.entry.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {Text(dayLabel(asset.date.day));Text("Date source: ${dateSourceLabel(asset.date.source)}${if(!asset.metadataRead) " (provisional)" else ""}");Text(DriveClient.displayPath(asset.entry.path))}},confirmButton={TextButton(onClick={details=false}){Text("Close")}})
 }
 @androidx.annotation.OptIn(markerClass=[androidx.media3.common.util.UnstableApi::class])
 @Composable private fun VideoPlayer(asset: Asset,model: GalleryModel) {
@@ -281,7 +327,7 @@ private fun dayLabel(day: String) = runCatching { LocalDate.parse(day).format(Da
     var error by remember { mutableStateOf<String?>(null) }
     DisposableEffect(player,lifecycle) {
         val observer=LifecycleEventObserver { _,event -> if(event==Lifecycle.Event.ON_STOP) player.pause() }
-        val listener=object: androidx.media3.common.Player.Listener { override fun onPlayerError(e: androidx.media3.common.PlaybackException) { error="Video non riproducibile: verifica la connessione o il formato del file." } }
+        val listener=object: androidx.media3.common.Player.Listener { override fun onPlayerError(e: androidx.media3.common.PlaybackException) { error="Cannot play this video. Check your connection or the file format." } }
         lifecycle.addObserver(observer);player.addListener(listener)
         onDispose { lifecycle.removeObserver(observer);player.removeListener(listener);player.release() }
     }

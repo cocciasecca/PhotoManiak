@@ -8,8 +8,8 @@ import java.util.concurrent.TimeUnit
 
 class Account(val driveId: String, val token: String) {
     init {
-        require(driveId.matches(Regex("[0-9]{1,18}"))) { "Inserisci l’ID numerico del tuo kDrive" }
-        require(token.isNotBlank() && token.none { it.isWhitespace() }) { "Inserisci il token API completo, senza spazi" }
+        require(driveId.matches(Regex("[0-9]{1,18}"))) { "Enter your numeric kDrive ID" }
+        require(token.isNotBlank() && token.none { it.isWhitespace() }) { "Enter the complete API token without spaces" }
     }
     override fun toString() = "Account(driveId=$driveId, token=[redacted])"
     override fun equals(other: Any?) = other is Account && driveId == other.driveId && token == other.token
@@ -28,10 +28,10 @@ class DriveClient(
         if(requestIntervalMillis == 0L) return
         synchronized(gate) {
             while(true) {
-                if(call.isCanceled()) throw IOException("Richiesta interrotta")
+                if(call.isCanceled()) throw IOException("Request cancelled")
                 val wait = (nextRequestNanos - System.nanoTime()) / 1_000_000
                 if(wait <= 0) break
-                try { Thread.sleep(minOf(wait,100)) } catch(e: InterruptedException) { Thread.currentThread().interrupt();throw IOException("Richiesta interrotta",e) }
+                try { Thread.sleep(minOf(wait,100)) } catch(e: InterruptedException) { Thread.currentThread().interrupt();throw IOException("Request cancelled",e) }
             }
             nextRequestNanos = System.nanoTime() + requestIntervalMillis * 1_000_000
         }
@@ -47,17 +47,17 @@ class DriveClient(
         .connectTimeout(20,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS).callTimeout(120,TimeUnit.SECONDS)
         .addInterceptor { chain ->
             var request=chain.request()
-            require(request.method in setOf("GET","HEAD")) { "L’app consente solo operazioni di lettura" }
+            require(request.method in setOf("GET","HEAD")) { "The app only allows read operations" }
             var response: Response? = null
             for(hop in 0..5) {
-                if(!trusted(request.url)) throw IOException("Destinazione del file non riconosciuta")
+                if(!trusted(request.url)) throw IOException("Unrecognized file destination")
                 if(apiOrigin(request.url)) pace(chain.call())
                 response=chain.proceed(authorized(request))
                 if(response.code !in setOf(301,302,303,307,308)) break
                 val location=response.header("Location")
                 val destination=location?.let { request.url.resolve(it) }
                 response.close()
-                if(destination==null || !trusted(destination) || hop==5) throw IOException("Reindirizzamento del file non valido")
+                if(destination==null || !trusted(destination) || hop==5) throw IOException("Invalid file redirect")
                 request=request.newBuilder().url(destination).removeHeader("Authorization").build()
             }
             requireNotNull(response)
@@ -67,7 +67,7 @@ class DriveClient(
     fun fileId(path: String): String {
         if(path=="/") return "1"
         val id=path.trimEnd('/').substringAfterLast('/').substringBefore('~')
-        require(id.matches(Regex("[0-9]+"))) { "Cartella non valida: selezionala nuovamente" }
+        require(id.matches(Regex("[0-9]+"))) { "Invalid folder: please select it again" }
         return id
     }
     fun url(path: String): HttpUrl = endpoint("2/drive/${account.driveId}/files/${fileId(path)}/download")
@@ -76,11 +76,11 @@ class DriveClient(
 
     fun checkResponse(response: Response) {
         if(!response.isSuccessful) throw IOException(when(response.code) {
-            401 -> "Token non valido, scaduto o revocato. Generane uno nuovo nel Manager Infomaniak."
-            403 -> "L’API ha negato l’accesso. Verifica il permesso drive del token e che l’ID kDrive appartenga a un drive accessibile dal tuo account."
-            404 -> "Drive, cartella o file non trovato. Controlla l’ID kDrive."
-            429 -> "Limite richieste kDrive raggiunto. Attendi un minuto, poi premi Aggiorna."
-            else -> "Errore API kDrive (${response.code}). Riprova più tardi."
+            401 -> "Invalid, expired or revoked token. Create a new one in Infomaniak Manager."
+            403 -> "L’API ha negato l’accesso. Verifica il permesso drive del token e che l’kDrive ID appartenga a un drive accessibile dal tuo account."
+            404 -> "Drive, cartella o file non trovato. Controlla l’kDrive ID."
+            429 -> "kDrive request limit reached. Wait a minute, then tap Refresh."
+            else -> "kDrive API error (${response.code}). Please try again later."
         })
     }
 
@@ -94,11 +94,11 @@ class DriveClient(
             cursor?.let { builder.addQueryParameter("cursor",it) }
             val page=http.newCall(Request.Builder().url(builder.build()).get().build()).execute().use {
                 checkResponse(it)
-                parsePage(it.body?.string() ?: throw IOException("Risposta API vuota"),path)
+                parsePage(it.body?.string() ?: throw IOException("Empty API response"),path)
             }
             page.entries.forEach { result[it.path]=it }
             cursor=page.nextCursor
-            if(cursor!=null && !seen.add(cursor)) throw IOException("Paginazione API non valida; indice precedente conservato")
+            if(cursor!=null && !seen.add(cursor)) throw IOException("Invalid API pagination; previous index preserved")
         } while(cursor!=null)
         return result.values.toList()
     }
@@ -107,11 +107,11 @@ class DriveClient(
         fun displayPath(path: String): String = java.net.URLDecoder.decode(path.replace("+","%2B"),"UTF-8").replace(Regex("/\\d+~"),"/")
         fun parsePage(text: String,parent: String): Page {
             val json=JSONObject(text)
-            if(json.optString("result")!="success") throw IOException("L’API non ha confermato la lettura della cartella")
-            val data=json.optJSONArray("data") ?: throw IOException("Formato elenco API inatteso; indice precedente conservato")
+            if(json.optString("result")!="success") throw IOException("The API did not confirm the folder listing")
+            val data=json.optJSONArray("data") ?: throw IOException("Unexpected API listing format; previous index preserved")
             val entries=(0 until data.length()).map { i ->
                 val file=data.getJSONObject(i)
-                val id=file.getLong("id");require(id>0) { "Identificativo file non valido" }
+                val id=file.getLong("id");require(id>0) { "Invalid file ID" }
                 val name=file.getString("name")
                 val dir=file.getString("type")=="dir"
                 val encoded="https://local.invalid/".toHttpUrl().newBuilder().addPathSegment(name).build().encodedPath.substring(1)
@@ -126,7 +126,7 @@ class DriveClient(
             }
             val more=json.optBoolean("has_more",false)
             val cursor=if(more) json.optString("cursor").takeIf { it.isNotBlank() && it!="null" }
-                ?: throw IOException("Cursore API mancante; elenco incompleto") else null
+                ?: throw IOException("Missing API cursor; incomplete listing") else null
             return Page(entries,cursor)
         }
     }

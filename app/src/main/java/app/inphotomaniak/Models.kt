@@ -35,8 +35,21 @@ object Dates {
         val match = Regex("(?:^|[^0-9])(20\\d{2})[-_]?(\\d{2})[-_]?(\\d{2})(?:[T_ -]?(\\d{2})[._:-]?(\\d{2})[._:-]?(\\d{2}))?(?:[^0-9]|$)").find(name)
         if (match != null) {
             val g = match.groupValues
-            parse("${g[1]}-${g[2]}-${g[3]}T${g[4].ifEmpty { "00" }}:${g[5].ifEmpty { "00" }}:${g[6].ifEmpty { "00" }}", "Nome file")?.let { return it }
+            parse("${g[1]}-${g[2]}-${g[3]}T${g[4].ifEmpty { "00" }}:${g[5].ifEmpty { "00" }}:${g[6].ifEmpty { "00" }}", "Filename")?.let { return it }
         }
-        return CaptureDate(modified, if (modified > 0) Instant.ofEpochMilli(modified).atZone(ZoneOffset.UTC).toLocalDate().toString() else "", if (modified > 0) "Modifica remota" else "Data sconosciuta")
+        return CaptureDate(modified, if (modified > 0) Instant.ofEpochMilli(modified).atZone(ZoneOffset.UTC).toLocalDate().toString() else "", if (modified > 0) "Remote modification" else "Unknown date")
     }
+}
+
+/** Minimum tile widths in dp; the grid adapts to the available screen width. */
+enum class ThumbnailSize(val label: String, val minWidth: Int) {
+    SMALL("Small", 80), MEDIUM("Medium", 112), LARGE("Large", 160)
+}
+
+// Older local indexes stored these fallback labels in Italian.
+fun dateSourceLabel(source: String): String = when(source) {
+    "Nome file" -> "Filename"
+    "Modifica remota" -> "Remote modification"
+    "Data sconosciuta" -> "Unknown date"
+    else -> source
 }
