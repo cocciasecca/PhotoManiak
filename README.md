@@ -4,7 +4,7 @@ A native Kotlin/Jetpack Compose gallery for photos and videos already stored on 
 
 ## Install and connect
 
-1. Download the APK from [Releases](https://github.com/cocciasecca/inPhoToManiak/releases), or build it yourself. Android 8.0 (API 26) or later is required. Release APKs are development builds signed with a debug key.
+1. Download the APK from [Releases](https://github.com/cocciasecca/PhotoManiak/releases), or build it yourself. Android 8.0 (API 26) or later is required. Release APKs are development builds signed with a debug key.
 2. Create a personal API token in [Infomaniak Manager](https://manager.infomaniak.com/v3/ng/accounts/token/list) with the **drive** scope. `user_info` is not required.
 3. Enter the token and your numeric kDrive ID in the app. Find the ID in the kDrive web address after `/drive/`.
 4. Open **Folders** and include the folders you want to browse. All nested levels are included; individual subfolders can be excluded.
@@ -49,7 +49,7 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. For device te
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
-[GitHub Actions](https://github.com/cocciasecca/inPhoToManiak/actions) runs JVM tests, lint, and compilation, then uploads the debug APK as an artifact. The local `dist/` directory is not tracked. Debug APKs built on different machines may have different signatures; stable distribution will need a dedicated signing key kept outside the repository.
+[GitHub Actions](https://github.com/cocciasecca/PhotoManiak/actions) runs JVM tests, lint, and compilation, then uploads the debug APK as an artifact. The local `dist/` directory is not tracked. Debug APKs built on different machines may have different signatures; stable distribution will need a dedicated signing key kept outside the repository.
 
 ## Compatibility
 
