@@ -24,7 +24,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
     private val db = AssetDb(app)
     private val mutable = MutableStateFlow(GalleryState())
     val state = mutable.asStateFlow()
-    var dav: DriveClient? = null; private set
+    var driveClient: DriveClient? = null; private set
     var images: ImageLoader? = null; private set
     private var scan: Job? = null
     init { viewModelScope.launch { withContext(Dispatchers.IO) {
@@ -34,8 +34,8 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
     } } }
     private fun connect(account: Account) {
-        dav = DriveClient(account)
-        images = ImageLoader.Builder(getApplication()).okHttpClient(dav!!.http)
+        driveClient = DriveClient(account)
+        images = ImageLoader.Builder(getApplication()).okHttpClient(driveClient!!.http)
             .memoryCache { MemoryCache.Builder(getApplication()).maxSizePercent(0.15).build() }
             .diskCache { DiskCache.Builder().directory(File(getApplication<Application>().cacheDir,"images")).maxSizeBytes(256L*1024*1024).build() }.build()
     }
@@ -55,7 +55,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         mutable.update { it.copy(thumbnailSize=size) }
     }
     fun browse(path: String) = operation {
-        val folders = requireNotNull(dav).list(path).filter { it.directory }.sortedBy { it.name.lowercase() }
+        val folders = requireNotNull(driveClient).list(path).filter { it.directory }.sortedBy { it.name.lowercase() }
         mutable.update { it.copy(folders=folders,path=path,screen="folders") }
     }
     fun screen(name: String) { mutable.update { it.copy(screen=name,error=null) }; if(name=="folders") browse(state.value.path) }
@@ -65,12 +65,38 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val next = FolderRules(old.included - path + if(mode==1) setOf(path) else emptySet(),old.excluded - path + if(mode==2) setOf(path) else emptySet())
         operation { settings.save(next); mutable.update { it.copy(rules=next,assets=db.all().filter { a -> next.accepts(a.entry.path) }) } }
     }
+    fun deleteAssets(paths: Set<String>, onFinished: (Set<String>) -> Unit = {}) {
+        if(state.value.busy || state.value.scanning || paths.isEmpty()) return
+        val client = driveClient ?: return
+        val entries = state.value.assets.filter { it.entry.path in paths }.map { it.entry }
+        if(entries.isEmpty()) return
+        operation {
+            val deleted = linkedSetOf<String>()
+            try {
+                for(entry in entries) {
+                    currentCoroutineContext().ensureActive()
+                    // Never remove a local record until kDrive confirms the trash operation.
+                    client.trash(entry)
+                    db.remove(entry.path)
+                    deleted.add(entry.path)
+                    mutable.update { it.copy(assets=it.assets.filterNot { a -> a.entry.path == entry.path },
+                        progress=getApplication<Application>().getString(R.string.delete_progress,deleted.size,entries.size)) }
+                }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) {
+                mutable.update { it.copy(error=getApplication<Application>().getString(
+                    R.string.delete_failed,deleted.size,entries.size,e.message.orEmpty())) }
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) { onFinished(deleted) }
+            }
+        }
+    }
     fun refresh() {
         if(state.value.busy || state.value.scanning || state.value.rules.included.isEmpty()) return
-        val client = dav ?: return
+        val client = driveClient ?: return
         val rules = state.value.rules
         scan = viewModelScope.launch {
-            mutable.update { it.copy(scanning=true,error=null,progress="Looking for photos and videos…") }
+            mutable.update { it.copy(scanning=true,error=null,progress=getApplication<Application>().getString(R.string.scan_searching)) }
             try { withContext(Dispatchers.IO) {
                 val previous = db.all().associateBy { it.entry.path }
                 val found = linkedMapOf<String,RemoteEntry>()
@@ -86,7 +112,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
                             else if(entry.media && rules.accepts(entry.path)) found[entry.path] = entry
                         }
                     }
-                    mutable.update { it.copy(progress="${found.size} items · ${visited.size} folders") }
+                    mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_discovery,found.size,visited.size)) }
                 }
                 val assets = found.values.map { entry ->
                     previous[entry.path]?.takeIf { it.entry.etag==entry.etag && it.entry.modified==entry.modified && (entry.etag.isNotBlank() || entry.modified > 0) }
@@ -107,26 +133,26 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
                         } catch(e: Exception) { ensureActive(); failures++ }
                     }
                     if(i % 25 == 0 && changed.isNotEmpty()) { db.upsert(changed); changed.clear(); publish(assets) }
-                    mutable.update { it.copy(progress="Photo dates · ${i+1}/${assets.size}") }
+                    mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,i+1,assets.size)) }
                 }
                 db.upsert(changed); publish(assets)
-                mutable.update { it.copy(progress=if(failures > 0) "$failures items have provisional dates. Tap Refresh to retry their metadata." else "Library updated") }
-            } } catch(e: CancellationException) { mutable.update { it.copy(progress="Scan stopped") }; throw e }
-            catch(e: Exception) { mutable.update { it.copy(error=e.message ?: "Connection failed") } }
+                mutable.update { it.copy(progress=if(failures > 0) getApplication<Application>().getString(R.string.scan_provisional,failures) else getApplication<Application>().getString(R.string.library_updated)) }
+            } } catch(e: CancellationException) { mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_stopped)) }; throw e }
+            catch(e: Exception) { mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.connection_failed)) } }
             finally { mutable.update { it.copy(scanning=false) } }
         }
     }
     private fun publish(assets: List<Asset>) { mutable.update { it.copy(assets=assets.sortedWith(compareByDescending<Asset> { a -> a.date.millis }.thenBy { a -> a.entry.path })) } }
-    fun stop() { scan?.cancel(); dav?.http?.dispatcher?.cancelAll() }
+    fun stop() { scan?.cancel(); driveClient?.http?.dispatcher?.cancelAll() }
     fun clearError() { mutable.update { it.copy(error=null) } }
     fun logout() {
         if(state.value.scanning || state.value.busy) return
         operation {
-            dav?.http?.dispatcher?.cancelAll()
+            driveClient?.http?.dispatcher?.cancelAll()
             images?.memoryCache?.clear(); images?.diskCache?.clear(); images?.shutdown(); images=null
             File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
             File(getApplication<Application>().cacheDir,"shared").deleteRecursively()
-            settings.clear(); db.replace(emptyList()); dav=null
+            settings.clear(); db.replace(emptyList()); driveClient=null
             mutable.value=GalleryState(ready=true)
         }
     }
@@ -136,9 +162,9 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         viewModelScope.launch {
             try { withContext(Dispatchers.IO) { block() } }
             catch(e: CancellationException) { throw e }
-            catch(e: Exception) { mutable.update { it.copy(error=e.message ?: "Operation failed") } }
+            catch(e: Exception) { mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.operation_failed)) } }
             finally { mutable.update { it.copy(busy=false) } }
         }
     }
-    override fun onCleared() { dav?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close() }
+    override fun onCleared() { driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close() }
 }

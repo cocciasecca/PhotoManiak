@@ -52,6 +52,7 @@ class AssetDb(context: Context): SQLiteOpenHelper(context, "gallery.db", null, 1
     fun all(): List<Asset> = readableDatabase.rawQuery("SELECT * FROM assets ORDER BY captured DESC, path", null).use { c -> buildList {
         while(c.moveToNext()) add(Asset(RemoteEntry(c.getString(0),c.getString(1),false,c.getString(2),c.getLong(3),c.getString(4)),CaptureDate(c.getLong(5),c.getString(6),c.getString(7)),c.getInt(8)==1))
     } }
+    fun remove(path: String) { writableDatabase.delete("assets", "path = ?", arrayOf(path)) }
     fun replace(assets: List<Asset>) = write(assets, clear=true)
     fun upsert(assets: List<Asset>) = write(assets, clear=false)
     private fun write(assets: List<Asset>, clear: Boolean) {

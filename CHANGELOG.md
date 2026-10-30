@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- Preserve timeline scroll position when closing a photo, including after screen recreation.
+- Add timeline multi-selection through the selection icon or long press.
+- Share multiple original photos/videos through Android's share sheet.
+- Add confirmed moves to kDrive trash from the timeline and viewer, with permission errors and partial-batch handling.
+- Keep permanent deletion, folder deletion, and trash emptying unavailable.
+
+- Split the main activity into focused screen and shared media components.
+- Move interface and progress text into Android string resources.
+- Rename obsolete WebDAV variable names to match the kDrive API client.
+- Read the displayed app version from build configuration.
+
 ## 0.3.0
 
 - Rename the app to PhotoManiak while preserving its Android application ID for in-place updates.

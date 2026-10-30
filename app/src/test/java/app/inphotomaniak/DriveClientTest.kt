@@ -60,4 +60,40 @@ class DriveClientTest {
         assertEquals(1,DriveClient(account,server.url("/"),0).list("/").size)
         server.takeRequest();assertEquals("Bearer test-token",server.takeRequest().getHeader("Authorization"))
     } }
+    private fun photo(id: Int=42) = RemoteEntry("/$id~photo.jpg","photo.jpg",false,"image/jpeg",0,"")
+    @Test fun trashUsesDedicatedEndpointAndBearer() { MockWebServer().use { server ->
+        server.enqueue(MockResponse().setBody("""{"result":"success","data":{"cancel_id":"fixture"}}"""))
+        DriveClient(account,server.url("/"),0).trash(photo())
+        val request=server.takeRequest()
+        assertEquals("DELETE",request.method)
+        assertEquals("/2/drive/123/files/42",request.path)
+        assertEquals("Bearer test-token",request.getHeader("Authorization"))
+    } }
+    @Test fun trashPermissionFailureIsNotSuccess() { MockWebServer().use { server ->
+        server.enqueue(MockResponse().setResponseCode(403))
+        val error=assertThrows(IOException::class.java) { DriveClient(account,server.url("/"),0).trash(photo()) }
+        assertTrue(error.message!!.contains("permission"))
+        assertEquals(1,server.requestCount)
+    } }
+    @Test fun trashRequiresExplicitSuccessBody() { MockWebServer().use { server ->
+        server.enqueue(MockResponse().setBody("""{"result":"error"}"""))
+        assertThrows(IOException::class.java) { DriveClient(account,server.url("/"),0).trash(photo()) }
+    } }
+    @Test fun trashNeverFollowsRedirects() { MockWebServer().use { server ->
+        server.enqueue(MockResponse().setResponseCode(307).setHeader("Location",server.url("/2/drive/123/trash/42")))
+        assertThrows(IOException::class.java) { DriveClient(account,server.url("/"),0).trash(photo()) }
+        assertEquals(1,server.requestCount)
+    } }
+    @Test fun trashRejectsFoldersAndRootBeforeNetwork() { MockWebServer().use { server ->
+        val client=DriveClient(account,server.url("/"),0)
+        assertThrows(IllegalArgumentException::class.java) { client.trash(photo().copy(directory=true)) }
+        assertThrows(IllegalArgumentException::class.java) { client.trash(photo(1)) }
+        assertEquals(0,server.requestCount)
+    } }
+    @Test fun mediaClientStillRejectsDeleteRequests() { MockWebServer().use { server ->
+        val client=DriveClient(account,server.url("/"),0)
+        assertThrows(IllegalArgumentException::class.java) { client.http.newCall(Request.Builder().url(server.url("/2/drive/123/files/42")).delete().build()).execute() }
+        assertEquals(0,server.requestCount)
+    } }
+
 }

@@ -11,13 +11,13 @@ import org.xmlpull.v1.XmlPullParser
 import android.util.Xml
 
 /** Bounded remote reads: never downloads an entire video to inspect its date. */
-class RangeSource(private val dav: DriveClient, private val path: String): MediaDataSource() {
+class RangeSource(private val driveClient: DriveClient, private val path: String): MediaDataSource() {
     private var length = -1L
     private var resolvedUrl: okhttp3.HttpUrl? = null
     private var transferred = 0L
     override fun getSize(): Long {
-        if (length < 0) dav.http.newCall(Request.Builder().url(dav.url(path)).header("Range","bytes=0-0").get().build()).execute().use {
-            dav.checkResponse(it)
+        if (length < 0) driveClient.http.newCall(Request.Builder().url(driveClient.url(path)).header("Range","bytes=0-0").get().build()).execute().use {
+            driveClient.checkResponse(it)
             resolvedUrl = it.request.url
             length = it.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
                 ?: if(it.code==200) it.header("Content-Length")?.toLongOrNull() ?: -1L else -1L
@@ -29,8 +29,8 @@ class RangeSource(private val dav: DriveClient, private val path: String): Media
         if (getSize() >= 0 && position >= length) return -1
         val wanted = minOf(size, 256 * 1024)
         if (transferred + wanted > 24L * 1024 * 1024) throw IOException("Video metadata read limit reached")
-        return dav.http.newCall(Request.Builder().url(resolvedUrl ?: dav.url(path)).header("Range", "bytes=$position-${position + wanted - 1}").build()).execute().use {
-            dav.checkResponse(it)
+        return driveClient.http.newCall(Request.Builder().url(resolvedUrl ?: driveClient.url(path)).header("Range", "bytes=$position-${position + wanted - 1}").build()).execute().use {
+            driveClient.checkResponse(it)
             if (position > 0 && it.code != 206) throw IOException("The server does not support partial reads")
             val stream = it.body?.byteStream() ?: return@use -1
             var total = 0
@@ -47,19 +47,19 @@ class LimitedStream(input: InputStream, private var remaining: Long): FilterInpu
     override fun skip(n: Long): Long { val skipped = `in`.skip(minOf(n,remaining)); remaining -= skipped; return skipped }
 }
 object MediaReader {
-    fun tags(dav: DriveClient, entry: RemoteEntry): Map<String,String> {
+    fun tags(driveClient: DriveClient, entry: RemoteEntry): Map<String,String> {
         if (entry.video) {
             val retriever = MediaMetadataRetriever()
             try {
-                RangeSource(dav,entry.path).use { source ->
+                RangeSource(driveClient,entry.path).use { source ->
                     retriever.setDataSource(source)
                     return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)?.let { mapOf("CreationDate" to it) } ?: emptyMap()
                 }
             } finally { retriever.release() }
         }
-        val req = Request.Builder().url(dav.url(entry.path)).header("Range","bytes=0-16777215").build()
-        return dav.http.newCall(req).execute().use { response ->
-            dav.checkResponse(response)
+        val req = Request.Builder().url(driveClient.url(entry.path)).header("Range","bytes=0-16777215").build()
+        return driveClient.http.newCall(req).execute().use { response ->
+            driveClient.checkResponse(response)
             val stream = response.body?.byteStream() ?: throw IOException("Empty file")
             val exif = ExifInterface(LimitedStream(stream,16L*1024*1024))
             val tags = mutableMapOf<String,String>()

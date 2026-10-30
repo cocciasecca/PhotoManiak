@@ -1,5 +1,19 @@
 # Verification
 
+## Version 0.4.0 — October 30, 2026
+
+- Build, Android Lint, 37 JVM tests, and 12 Android 15 device tests passed.
+- API tests cover the exact trash endpoint, token handling, permission failure, explicit success responses, redirect rejection, and refusing folder/root deletion. The media HTTP client still rejects mutation requests.
+- UI regression tests cover returning to the previous timeline position after opening a photo and recreating the screen, multiple selection, and cancelling the trash confirmation.
+- Device tests also verify multiple sharing URIs and MIME types, read-only grants, and removal of only the intended indexed file.
+- Included the pending screen/string-resource cleanup; existing interface and preference tests passed.
+- No real cloud files were deleted during development. Live trash permissions and multi-file sharing should be checked with the user’s own account.
+- The signing certificate and application ID match the published 0.3.0 APK for in-place updates.
+
+APK: `PhotoManiak-0.4.0-debug.apk`.
+
+SHA-256: `3cfcf87f4cf84defe824ebce335e146907de4060cfb82288587df7427cdbad10`.
+
 ## Version 0.3.0
 
 - APK compilation and Android Lint completed without errors.

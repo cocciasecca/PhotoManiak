@@ -56,6 +56,38 @@ object ShareFiles {
         } finally { cancellation.cancel() }
     }
 
+    suspend fun prepareMany(context: Context, client: DriveClient, entries: List<RemoteEntry>): Intent {
+        require(entries.isNotEmpty())
+        val prepared = mutableListOf<Intent>()
+        try {
+            // Download sequentially to avoid flooding the API or holding originals in memory.
+            entries.distinctBy { it.path }.forEach { prepared.add(prepare(context,client,it)) }
+            return combine(prepared)
+        } catch(e: Exception) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                prepared.forEach { intent ->
+                    intent.clipData?.getItemAt(0)?.uri?.let { context.contentResolver.delete(it,null,null) }
+                }
+            }
+            throw e
+        }
+    }
+
+    internal fun combine(intents: List<Intent>): Intent {
+        require(intents.isNotEmpty())
+        if(intents.size == 1) return intents.single()
+        val uris = ArrayList(intents.map { requireNotNull(it.clipData).getItemAt(0).uri })
+        val types = intents.mapNotNull { it.type }.toSet()
+        val families = types.map { it.substringBefore('/') }.toSet()
+        val commonType = if(types.size == 1) types.single() else if(families.size == 1) "${families.single()}/*" else "*/*"
+        return Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = commonType
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM,uris)
+            clipData = ClipData.newRawUri("Media",uris.first()).also { clip -> uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) } }
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
     internal fun sendIntent(context: Context, file: File, mime: String): Intent {
         val uri = FileProvider.getUriForFile(context,"${context.packageName}.files",file)
         val inferred = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase(Locale.ROOT))

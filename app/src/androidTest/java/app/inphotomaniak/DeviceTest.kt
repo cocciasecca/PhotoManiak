@@ -73,4 +73,29 @@ class DeviceTest {
         try { Settings(context).save(rules);assertEquals(rules,Settings(context).rules()) }
         finally { Settings(context).clear() }
     }
+    @Test fun multipleShareIncludesEveryUriAndCorrectMixedMimeType() {
+        val directory=java.io.File(context.cacheDir,"shared/multiple-test").apply { mkdirs() }
+        try {
+            val photo=java.io.File(directory,"photo.jpg").apply { writeText("photo fixture") }
+            val video=java.io.File(directory,"video.mp4").apply { writeText("video fixture") }
+            val intent=ShareFiles.combine(listOf(ShareFiles.sendIntent(context,photo,"image/jpeg"),ShareFiles.sendIntent(context,video,"video/mp4")))
+            assertEquals(android.content.Intent.ACTION_SEND_MULTIPLE,intent.action)
+            assertEquals("*/*",intent.type)
+            assertEquals(2,intent.clipData!!.itemCount)
+            assertEquals(2,intent.getParcelableArrayListExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM)!!.size)
+            assertEquals(0,intent.flags and android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            for(i in 0..1) context.contentResolver.openInputStream(intent.clipData!!.getItemAt(i).uri)!!.use { assertTrue(it.readBytes().isNotEmpty()) }
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun deletingOneIndexedFilePreservesOtherPhotos() {
+        val db=AssetDb(context)
+        fun asset(path: String)=Asset(RemoteEntry(path,path,false,"image/jpeg",1,"e"),CaptureDate(1,"2024-01-01","EXIF"),true)
+        try {
+            db.replace(listOf(asset("/2~a.jpg"),asset("/3~b.jpg")))
+            db.remove("/2~a.jpg")
+            assertEquals(listOf("/3~b.jpg"),db.all().map { it.entry.path })
+        } finally { db.replace(emptyList());db.close() }
+    }
+
 }

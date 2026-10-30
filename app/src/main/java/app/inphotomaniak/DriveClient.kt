@@ -63,6 +63,32 @@ class DriveClient(
             requireNotNull(response)
         }.build()
 
+    // Mutations use a separate client: image/video requests remain strictly GET/HEAD.
+    // No redirects or automatic retries for a confirmed trash operation.
+    private val trashHttp = OkHttpClient.Builder()
+        .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
+        .connectTimeout(20,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS).callTimeout(60,TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val request = chain.request()
+            require(request.method == "DELETE" && apiOrigin(request.url))
+            require(request.url.query == null && request.url.encodedPath.matches(
+                Regex("/2/drive/${account.driveId}/files/[0-9]+")))
+            pace(chain.call())
+            chain.proceed(authorized(request))
+        }.build()
+
+    fun trash(entry: RemoteEntry) {
+        val id = fileId(entry.path)
+        require(!entry.directory && entry.media && id.toLong() > 1) { "Only individual photos and videos can be moved to trash." }
+        val request = Request.Builder().url(endpoint("2/drive/${account.driveId}/files/$id")).delete().build()
+        trashHttp.newCall(request).execute().use { response ->
+            if(response.code == 403) throw IOException("You do not have permission to delete this file. Check your kDrive access and token permissions.")
+            checkResponse(response)
+            val json = JSONObject(response.body?.string() ?: throw IOException("Deletion was not confirmed. Refresh the library before retrying."))
+            if(json.optString("result") != "success") throw IOException("kDrive did not confirm deletion. Refresh the library before retrying.")
+        }
+    }
+
     private fun endpoint(path: String) = base.resolve(path)!!
     fun fileId(path: String): String {
         if(path=="/") return "1"
@@ -77,8 +103,8 @@ class DriveClient(
     fun checkResponse(response: Response) {
         if(!response.isSuccessful) throw IOException(when(response.code) {
             401 -> "Invalid, expired or revoked token. Create a new one in Infomaniak Manager."
-            403 -> "L’API ha negato l’accesso. Verifica il permesso drive del token e che l’kDrive ID appartenga a un drive accessibile dal tuo account."
-            404 -> "Drive, cartella o file non trovato. Controlla l’kDrive ID."
+            403 -> "API access denied. Check your token scope and account permissions."
+            404 -> "Drive, folder or file not found. Check your kDrive ID."
             429 -> "kDrive request limit reached. Wait a minute, then tap Refresh."
             else -> "kDrive API error (${response.code}). Please try again later."
         })

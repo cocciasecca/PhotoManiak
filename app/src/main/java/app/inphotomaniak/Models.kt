@@ -42,14 +42,6 @@ object Dates {
 }
 
 /** Minimum tile widths in dp; the grid adapts to the available screen width. */
-enum class ThumbnailSize(val label: String, val minWidth: Int) {
-    SMALL("Small", 80), MEDIUM("Medium", 112), LARGE("Large", 160)
-}
-
-// Older local indexes stored these fallback labels in Italian.
-fun dateSourceLabel(source: String): String = when(source) {
-    "Nome file" -> "Filename"
-    "Modifica remota" -> "Remote modification"
-    "Data sconosciuta" -> "Unknown date"
-    else -> source
+enum class ThumbnailSize(val labelRes: Int, val minWidth: Int) {
+    SMALL(R.string.thumbnail_small, 80), MEDIUM(R.string.thumbnail_medium, 112), LARGE(R.string.thumbnail_large, 160)
 }
