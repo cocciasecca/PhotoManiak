@@ -16,6 +16,7 @@ data class GalleryState(
     val ready: Boolean = false, val account: Account? = null, val rules: FolderRules = FolderRules(),
     val assets: List<Asset> = emptyList(), val folders: List<RemoteEntry> = emptyList(), val path: String = "/",
     val busy: Boolean = false, val scanning: Boolean = false, val progress: String = "", val error: String? = null,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val screen: String = "timeline", val thumbnailSize: ThumbnailSize = ThumbnailSize.MEDIUM
 )
 @OptIn(coil.annotation.ExperimentalCoilApi::class)
@@ -31,7 +32,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val account = settings.account()
         if(account != null) connect(account)
         val rules = settings.rules()
-        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
+        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
     } } }
     private fun connect(account: Account) {
         driveClient = DriveClient(account)
@@ -44,11 +45,15 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val client = DriveClient(account)
         val folders = client.list("/").filter { it.directory }
         // A fresh login must never inherit an unreadable previous account's data.
-        settings.clear(); settings.save(state.value.thumbnailSize); db.replace(emptyList())
+        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); db.replace(emptyList())
         File(getApplication<Application>().cacheDir,"images").deleteRecursively()
         File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
         settings.save(account); connect(account)
         mutable.update { it.copy(account=account,rules=FolderRules(),assets=emptyList(),folders=folders,path="/",screen="folders") }
+    }
+    fun themeMode(mode: ThemeMode) = operation {
+        settings.save(mode)
+        mutable.update { it.copy(themeMode=mode) }
     }
     fun thumbnailSize(size: ThumbnailSize) = operation {
         settings.save(size)

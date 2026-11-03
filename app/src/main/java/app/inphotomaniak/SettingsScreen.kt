@@ -13,6 +13,14 @@ import androidx.compose.ui.unit.dp
     var confirm by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
         Text(stringResource(R.string.settings),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
+        Text(stringResource(R.string.appearance),style=MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { mode ->
+                FilterChip(selected=s.themeMode==mode,onClick={model.themeMode(mode)},enabled=!s.busy,label={Text(stringResource(mode.labelRes))})
+            }
+        }
+        Text(stringResource(R.string.theme_help),style=MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
         Text(stringResource(R.string.thumbnail_size),style=MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             ThumbnailSize.entries.forEach { size ->

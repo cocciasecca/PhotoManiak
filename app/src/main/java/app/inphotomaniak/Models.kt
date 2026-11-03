@@ -45,3 +45,13 @@ object Dates {
 enum class ThumbnailSize(val labelRes: Int, val minWidth: Int) {
     SMALL(R.string.thumbnail_small, 80), MEDIUM(R.string.thumbnail_medium, 112), LARGE(R.string.thumbnail_large, 160)
 }
+
+/** Appearance choice; SYSTEM follows Android's current day/night configuration. */
+enum class ThemeMode(val labelRes: Int) {
+    SYSTEM(R.string.theme_system), LIGHT(R.string.theme_light), DARK(R.string.theme_dark);
+    fun isDark(systemDark: Boolean): Boolean = when(this) {
+        SYSTEM -> systemDark
+        LIGHT -> false
+        DARK -> true
+    }
+}

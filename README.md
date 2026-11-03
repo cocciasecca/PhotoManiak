@@ -17,6 +17,8 @@ Each user connects their own account. Never put tokens in source code, GitHub is
 - One active account and drive at a time, configured in the app.
 - Recursive, paginated browsing with folder inclusion and exclusion.
 - Timeline ordered by capture date; photo zoom, swipe navigation, and video playback.
+- **Settings → Appearance:** System (default), Light, or Dark. System tracks Android’s current theme; your choice is saved between launches.
+- One adaptive launcher icon with separate foreground/background layers and an Android 13+ monochrome layer for themed icons. Enable themed icons in a compatible launcher; the launcher controls colors, masks, and motion effects.
 - **Settings → Thumbnail size:** Small, Medium, or Large. The preference survives app restarts; the grid adapts to screen width.
 - A minimal viewer with a back arrow at the top and **Share**, **Delete**, and **Info** at the bottom, without a toolbar or photo counter.
 - Share the original file using Android's share sheet. The app first downloads a temporary private copy, which may take time for large files. It grants read access to the receiving app without exposing the API token.

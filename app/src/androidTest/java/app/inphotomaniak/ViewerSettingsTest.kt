@@ -3,6 +3,10 @@ package app.inphotomaniak
 import android.app.Application
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
@@ -95,6 +99,39 @@ class ViewerSettingsTest {
         compose.onNodeWithText("Move to trash").assertDoesNotExist()
         compose.onNodeWithTag("media:/2~photo0.jpg").assertIsSelected()
         compose.onNodeWithTag("media:/3~photo1.jpg").assertIsSelected()
+    }
+
+    @Test fun appearanceFollowsSystemUnlessExplicitlyOverridden() {
+        val night=mutableStateOf(false)
+        var background=Color.Unspecified
+        compose.setContent {
+            val state by model.state.collectAsState()
+            val config=Configuration(LocalConfiguration.current).apply {
+                uiMode=(uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                    if(night.value) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+            }
+            CompositionLocalProvider(LocalConfiguration provides config) {
+                PhotoManiakTheme(state.themeMode) {
+                    val colors=MaterialTheme.colorScheme
+                    SideEffect { background=colors.background }
+                    SettingsScreen(state,model)
+                }
+            }
+        }
+        compose.onNodeWithText("System").assertIsSelected()
+        compose.runOnIdle { assertEquals(LightColors.background,background);night.value=true }
+        compose.runOnIdle { assertEquals(DarkColors.background,background) }
+        compose.onNodeWithText("Light").performClick()
+        compose.waitUntil(5000) { model.state.value.themeMode==ThemeMode.LIGHT && !model.state.value.busy }
+        compose.runOnIdle { assertEquals(LightColors.background,background) }
+        assertEquals(ThemeMode.LIGHT,Settings(context).themeMode())
+        compose.onNodeWithText("Dark").performClick()
+        compose.waitUntil(5000) { model.state.value.themeMode==ThemeMode.DARK && !model.state.value.busy }
+        compose.runOnIdle { night.value=false }
+        compose.runOnIdle { assertEquals(DarkColors.background,background) }
+        compose.onNodeWithText("System").performClick()
+        compose.waitUntil(5000) { model.state.value.themeMode==ThemeMode.SYSTEM && !model.state.value.busy }
+        compose.runOnIdle { assertEquals(LightColors.background,background) }
     }
 
 }

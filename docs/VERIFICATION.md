@@ -1,5 +1,17 @@
 # Verification
 
+## Version 0.5.0 — November 3, 2026
+
+- APK build, Android Lint, 37 JVM tests, and 15 Android 15 device tests passed.
+- Added checks for persisted appearance settings, following system theme changes, explicit light/dark overrides, and adaptive/monochrome icon layers.
+- Visually checked the login screen in system light and dark modes, including system-bar contrast.
+- Themed icon colors depend on a compatible launcher and its themed-icons setting.
+- The signing certificate and application ID match previous releases for in-place updates.
+
+APK: `PhotoManiak-0.5.0-debug.apk`.
+
+SHA-256: `a5f6d3eb3cb358551c2e41c8e985b595bb8dcf33af73cfd359e99f086370ce58`.
+
 ## Version 0.4.0 — October 30, 2026
 
 - Build, Android Lint, 37 JVM tests, and 12 Android 15 device tests passed.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Add persistent System, Light, and Dark appearance options, with System as the default.
+- Keep viewer controls and system bars readable against the black photo/video background.
+- Replace the legacy launcher drawable with an adaptive icon using separate foreground and background layers.
+- Add a transparent monochrome layer for Android 13+ themed launcher icons.
+
 ## 0.4.0
 
 - Preserve timeline scroll position when closing a photo, including after screen recreation.

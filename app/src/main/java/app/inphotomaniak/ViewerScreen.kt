@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -29,6 +30,17 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun Viewer(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
+    // Keep photo/video controls readable against the black viewer in every app theme.
+    val activity=LocalContext.current.activity()
+    val parentDark=MaterialTheme.colorScheme.background.luminance() < 0.5f
+    DisposableEffect(activity,parentDark) {
+        activity?.themeSystemBars(true)
+        onDispose { activity?.themeSystemBars(parentDark) }
+    }
+    MaterialTheme(colorScheme=DarkColors) { ViewerContent(assets,initial,model,onClose) }
+}
+
+@Composable private fun ViewerContent(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
     val pager=rememberPagerState(initialPage=initial) { assets.size }
     var details by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]

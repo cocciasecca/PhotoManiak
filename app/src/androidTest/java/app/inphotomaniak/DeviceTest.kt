@@ -98,4 +98,32 @@ class DeviceTest {
         } finally { db.replace(emptyList());db.close() }
     }
 
+    @Test fun appearancePreferenceSurvivesRestartAndDefaultsToSystem() {
+        try {
+            Settings(context).clear()
+            assertEquals(ThemeMode.SYSTEM,Settings(context).themeMode())
+            Settings(context).save(ThemeMode.DARK)
+            assertEquals(ThemeMode.DARK,Settings(context).themeMode())
+            context.getSharedPreferences("settings",0).edit().putString("theme_mode","unknown").commit()
+            assertEquals(ThemeMode.SYSTEM,Settings(context).themeMode())
+        } finally { Settings(context).clear() }
+    }
+
+    @Test fun launcherIconHasAdaptiveLayersAndThemedMask() {
+        val icon=context.packageManager.getApplicationIcon(context.packageName)
+        assertTrue(icon is android.graphics.drawable.AdaptiveIconDrawable)
+        val adaptive=icon as android.graphics.drawable.AdaptiveIconDrawable
+        assertNotNull(adaptive.background)
+        assertNotNull(adaptive.foreground)
+        if(android.os.Build.VERSION.SDK_INT >= 33) {
+            val mono=requireNotNull(adaptive.monochrome)
+            val bitmap=android.graphics.Bitmap.createBitmap(108,108,android.graphics.Bitmap.Config.ARGB_8888)
+            mono.setBounds(0,0,108,108)
+            mono.draw(android.graphics.Canvas(bitmap))
+            assertEquals(0,android.graphics.Color.alpha(bitmap.getPixel(0,0)))
+            assertTrue((0 until 108).any { x -> (0 until 108).any { y -> android.graphics.Color.alpha(bitmap.getPixel(x,y)) > 0 } })
+            bitmap.recycle()
+        }
+    }
+
 }

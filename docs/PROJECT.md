@@ -65,3 +65,9 @@ The grid state is owned by `GalleryContent`, above the viewer branch, so opening
 Deletion requires an explicit confirmation dialog. The ViewModel serializes it against scanning and other account operations. Each successful response removes only that file from SQLite and the visible library; failure stops the batch and preserves unconfirmed items. Shared-file intents use ACTION_SEND for one item or ACTION_SEND_MULTIPLE for multiple items, with read-only grants for every URI.
 
 The trash route matches `deleteFile` in the [official Android client](https://github.com/Infomaniak/android-kDrive/blob/master/app/src/main/java/com/infomaniak/drive/data/api/ApiRepository.kt). The public API description calls it “Trash a file, move it to the trash can”; permanent removal is a separate route.
+
+## Appearance and launcher icon
+
+`Theme.kt` defines coordinated light/dark palettes. The stored appearance mode resolves against Android’s current night configuration in System mode. The viewer retains a dark palette for its black media background and restores system-bar contrast when closed.
+
+The single launcher icon uses adaptive resources from API 26, with a separate monochrome layer from API 33. Its foreground remains inside the central safe area of a 108dp canvas. The launcher supplies the mask and any supported motion effects. Themed-icon colors are chosen by Android, independently of the in-app light/dark override.

@@ -44,6 +44,8 @@ class Settings(context: Context) {
     fun save(rules: FolderRules) { check(prefs.edit().putString("included", JSONArray(rules.included.toList()).toString()).putString("excluded", JSONArray(rules.excluded.toList()).toString()).commit()) }
     fun thumbnailSize(): ThumbnailSize = ThumbnailSize.entries.firstOrNull { it.name == prefs.getString("thumbnail_size", null) } ?: ThumbnailSize.MEDIUM
     fun save(size: ThumbnailSize) { check(prefs.edit().putString("thumbnail_size", size.name).commit()) }
+    fun themeMode(): ThemeMode = ThemeMode.entries.firstOrNull { it.name == prefs.getString("theme_mode",null) } ?: ThemeMode.SYSTEM
+    fun save(mode: ThemeMode) { check(prefs.edit().putString("theme_mode",mode.name).commit()) }
     fun clear() { check(prefs.edit().clear().commit()) }
 }
 class AssetDb(context: Context): SQLiteOpenHelper(context, "gallery.db", null, 1) {

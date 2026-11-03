@@ -82,4 +82,9 @@
     <string name="selected_count">%1$d selected</string>
     <string name="select_photos">Select photos</string>
     <string name="selected">Selected</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_help">System follows your device’s light or dark theme. Themed home-screen icons are controlled by your Android launcher.</string>
 </resources>
