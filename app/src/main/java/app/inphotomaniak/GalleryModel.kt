@@ -16,6 +16,9 @@ data class GalleryState(
     val ready: Boolean = false, val account: Account? = null, val rules: FolderRules = FolderRules(),
     val assets: List<Asset> = emptyList(), val folders: List<RemoteEntry> = emptyList(), val path: String = "/",
     val busy: Boolean = false, val scanning: Boolean = false, val progress: String = "", val error: String? = null,
+    val collections: Collections = Collections(), val collectionView: String = "all", val albumId: String? = null,
+    val syncFolder: String? = null, val syncing: Boolean = false, val syncError: String? = null,
+    val pendingEdits: Int = 0, val lastSync: Long = 0,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val screen: String = "timeline", val thumbnailSize: ThumbnailSize = ThumbnailSize.MEDIUM
 )
@@ -23,6 +26,9 @@ data class GalleryState(
 class GalleryModel(app: Application): AndroidViewModel(app) {
     private val settings = Settings(app)
     private val db = AssetDb(app)
+    private val collectionDb = CollectionDb(app)
+    private var syncJob: Job? = null
+    private var syncDelay: Job? = null
     private val mutable = MutableStateFlow(GalleryState())
     val state = mutable.asStateFlow()
     var driveClient: DriveClient? = null; private set
@@ -32,8 +38,8 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val account = settings.account()
         if(account != null) connect(account)
         val rules = settings.rules()
-        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
-    } } }
+        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
+    }; syncCollections() } }
     private fun connect(account: Account) {
         driveClient = DriveClient(account)
         images = ImageLoader.Builder(getApplication()).okHttpClient(driveClient!!.http)
@@ -45,11 +51,86 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val client = DriveClient(account)
         val folders = client.list("/").filter { it.directory }
         // A fresh login must never inherit an unreadable previous account's data.
-        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); db.replace(emptyList())
+        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); db.replace(emptyList()); collectionDb.clear()
         File(getApplication<Application>().cacheDir,"images").deleteRecursively()
         File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
         settings.save(account); connect(account)
-        mutable.update { it.copy(account=account,rules=FolderRules(),assets=emptyList(),folders=folders,path="/",screen="folders") }
+        mutable.update { it.copy(account=account,rules=FolderRules(),assets=emptyList(),collections=Collections(),syncFolder=null,pendingEdits=0,lastSync=0,syncError=null,collectionView="all",albumId=null,folders=folders,path="/",screen="folders") }
+    }
+    fun collectionView(view: String, album: String? = null) {
+        mutable.update { it.copy(collectionView=view,albumId=album,screen="timeline") }
+    }
+    private fun publishCollections() = synchronized(collectionDb) {
+        val collections=collectionDb.snapshot()
+        val pending=collectionDb.pendingCount()
+        mutable.update { it.copy(collections=collections,pendingEdits=pending) }
+    }
+    private fun changeCollection(block: ()->Unit) = operation {
+        block(); publishCollections()
+        withContext(Dispatchers.Main) { scheduleSync() }
+    }
+    fun favorite(assets: List<Asset>, value: Boolean) = changeCollection {
+        collectionDb.edit("favorite",assets.map { it.entry.collectionId() },value.toString())
+    }
+    fun archive(assets: List<Asset>, value: Boolean) = changeCollection {
+        collectionDb.edit("archive",assets.map { it.entry.collectionId() },value.toString())
+    }
+    fun createAlbum(name: String, assets: List<Asset> = emptyList()) = changeCollection {
+        val id=java.util.UUID.randomUUID().toString()
+        collectionDb.edit("albumName",listOf(id),name.trim())
+        collectionDb.members(id,assets.map { it.entry.collectionId() },true)
+    }
+    fun renameAlbum(id: String, name: String) = changeCollection { collectionDb.edit("albumName",listOf(id),name.trim()) }
+    fun deleteAlbum(id: String) = changeCollection {
+        collectionDb.edit("albumDeleted",listOf(id),"true")
+        mutable.update { if(it.albumId==id) it.copy(albumId=null,collectionView="all",screen="collections") else it }
+    }
+    fun albumMembers(id: String, assets: List<Asset>, added: Boolean) = changeCollection {
+        collectionDb.members(id,assets.map { it.entry.collectionId() },added)
+    }
+    fun enableCollectionSync(parent: String) {
+        if(state.value.syncing) return
+        operation {
+            val folder=requireNotNull(driveClient).collectionFolder(parent)
+            if(state.value.syncFolder?.let { requireNotNull(driveClient).fileId(it) } != requireNotNull(driveClient).fileId(folder)) collectionDb.resetForLocation()
+            publishCollections()
+            settings.syncFolder(folder)
+            mutable.update { it.copy(syncFolder=folder,syncError=null) }
+            withContext(Dispatchers.Main) { syncCollections() }
+        }
+    }
+    fun disableCollectionSync() {
+        if(state.value.syncing) return
+        syncDelay?.cancel()
+        operation { settings.syncFolder(null);mutable.update { it.copy(syncFolder=null,syncError=null) } }
+    }
+    private fun scheduleSync() {
+        syncDelay?.cancel()
+        syncDelay=viewModelScope.launch { delay(2000);syncCollections() }
+    }
+    fun syncCollections() {
+        if(state.value.syncing) return
+        val folder=state.value.syncFolder ?: return
+        val client=driveClient ?: return
+        mutable.update { it.copy(syncing=true,syncError=null) }
+        syncJob=viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val context=currentCoroutineContext()
+                    CollectionSync(client,collectionDb).run(folder) { context.ensureActive() }
+                    val time=System.currentTimeMillis();settings.lastCollectionSync(time)
+                    publishCollections()
+                    mutable.update { it.copy(lastSync=time) }
+                }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) {
+                withContext(Dispatchers.IO) { publishCollections() }
+                mutable.update { it.copy(syncError=e.message ?: "Collection sync failed. Local changes are saved.") }
+            } finally {
+                mutable.update { it.copy(syncing=false) }
+                if(state.value.pendingEdits>0 && state.value.syncError==null) scheduleSync()
+            }
+        }
     }
     fun themeMode(mode: ThemeMode) = operation {
         settings.save(mode)
@@ -97,6 +178,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         }
     }
     fun refresh() {
+        syncCollections()
         if(state.value.busy || state.value.scanning || state.value.rules.included.isEmpty()) return
         val client = driveClient ?: return
         val rules = state.value.rules
@@ -151,13 +233,14 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
     fun stop() { scan?.cancel(); driveClient?.http?.dispatcher?.cancelAll() }
     fun clearError() { mutable.update { it.copy(error=null) } }
     fun logout() {
-        if(state.value.scanning || state.value.busy) return
+        if(state.value.scanning || state.value.busy || state.value.syncing) return
+        syncDelay?.cancel()
         operation {
             driveClient?.http?.dispatcher?.cancelAll()
             images?.memoryCache?.clear(); images?.diskCache?.clear(); images?.shutdown(); images=null
             File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
             File(getApplication<Application>().cacheDir,"shared").deleteRecursively()
-            settings.clear(); db.replace(emptyList()); driveClient=null
+            settings.clear(); db.replace(emptyList()); collectionDb.clear(); driveClient=null
             mutable.value=GalleryState(ready=true)
         }
     }
@@ -171,5 +254,5 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
             finally { mutable.update { it.copy(busy=false) } }
         }
     }
-    override fun onCleared() { driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close() }
+    override fun onCleared() { driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close(); collectionDb.close() }
 }

@@ -46,6 +46,10 @@ class Settings(context: Context) {
     fun save(size: ThumbnailSize) { check(prefs.edit().putString("thumbnail_size", size.name).commit()) }
     fun themeMode(): ThemeMode = ThemeMode.entries.firstOrNull { it.name == prefs.getString("theme_mode",null) } ?: ThemeMode.SYSTEM
     fun save(mode: ThemeMode) { check(prefs.edit().putString("theme_mode",mode.name).commit()) }
+    fun syncFolder(): String? = prefs.getString("collection_folder",null)
+    fun syncFolder(path: String?) { check(prefs.edit().putString("collection_folder",path).commit()) }
+    fun lastCollectionSync(): Long = prefs.getLong("collection_sync",0)
+    fun lastCollectionSync(time: Long) { check(prefs.edit().putLong("collection_sync",time).commit()) }
     fun clear() { check(prefs.edit().clear().commit()) }
 }
 class AssetDb(context: Context): SQLiteOpenHelper(context, "gallery.db", null, 1) {

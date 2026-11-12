@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 
 @Composable private fun ViewerContent(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
     val pager=rememberPagerState(initialPage=initial) { assets.size }
+    var addToAlbum by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]
     val state by model.state.collectAsStateWithLifecycle()
@@ -56,7 +57,7 @@ import kotlinx.coroutines.launch
         model.deleteAssets(setOf(asset.entry.path)) { deleted -> if(asset.entry.path in deleted) onClose() }
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=72.dp),key={assets[it].entry.path}) { index ->
+        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=128.dp),key={assets[it].entry.path}) { index ->
             val item=assets[index]
             if(item.entry.video) { if(index==pager.currentPage) VideoPlayer(item,model) }
             else {
@@ -77,6 +78,17 @@ import kotlinx.coroutines.launch
         Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding().fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
             state.error?.let { ErrorCard(it,model::clearError) }
             shareError?.let { ErrorCard(it) { shareError=null } }
+            Row(horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+                val favorite=asset.entry.collectionId() in state.collections.favorites
+                val archived=asset.entry.collectionId() in state.collections.archived
+                IconToggleButton(checked=favorite,enabled=!state.busy && !sharing,onCheckedChange={model.favorite(listOf(asset),it)}) {
+                    Icon(if(favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,stringResource(if(favorite) R.string.unfavorite else R.string.favorite))
+                }
+                IconButton(enabled=!state.busy && !sharing,onClick={model.archive(listOf(asset),!archived)}) {
+                    Icon(if(archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,stringResource(if(archived) R.string.unarchive else R.string.archive))
+                }
+                IconButton(enabled=!state.busy && !sharing,onClick={addToAlbum=true}) { Icon(Icons.Outlined.AddPhotoAlternate,stringResource(R.string.add_to_album)) }
+            }
             Row(Modifier.padding(horizontal=24.dp,vertical=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 TextButton(enabled=!sharing && !state.busy,onClick={
                     val selectedAsset=asset
@@ -103,5 +115,6 @@ import kotlinx.coroutines.launch
             }
         }
     }
+    if(addToAlbum) AddToAlbumDialog(state,model,listOf(asset)) { addToAlbum=false }
     if(details) AlertDialog(onDismissRequest={details=false},title={Text(asset.entry.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {Text(dayLabel(asset.date.day));Text(stringResource(if(asset.metadataRead) R.string.date_source else R.string.date_source_provisional,dateSourceLabel(asset.date.source)));Text(DriveClient.displayPath(asset.entry.path))}},confirmButton={TextButton(onClick={details=false}){Text(stringResource(R.string.close))}})
 }

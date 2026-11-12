@@ -1,6 +1,8 @@
 package app.inphotomaniak
 
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 import java.io.IOException
@@ -86,6 +88,70 @@ class DriveClient(
             checkResponse(response)
             val json = JSONObject(response.body?.string() ?: throw IOException("Deletion was not confirmed. Refresh the library before retrying."))
             if(json.optString("result") != "success") throw IOException("kDrive did not confirm deletion. Refresh the library before retrying.")
+        }
+    }
+
+    // Only app-owned metadata creation. Existing files are never overwritten.
+    private val collectionHttp = OkHttpClient.Builder()
+        .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
+        .connectTimeout(20,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS).callTimeout(60,TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val request=chain.request()
+            require(request.method=="POST" && apiOrigin(request.url))
+            val folder=request.url.encodedPath.matches(Regex("/3/drive/${account.driveId}/files/[0-9]+/directory"))
+            val upload=request.url.encodedPath=="/3/drive/${account.driveId}/upload" &&
+                request.url.queryParameter("conflict")=="error" && CollectionJson.isFilename(request.url.queryParameter("file_name").orEmpty())
+            require(folder || upload) { "Only collection metadata may be uploaded" }
+            pace(chain.call())
+            chain.proceed(authorized(request))
+        }.build()
+
+    fun collectionFolder(parent: String): String {
+        fun existing(): RemoteEntry? {
+            val matches=list(parent).filter { it.name=="PhotoManiak" }
+            require(matches.size <= 1 && matches.none { !it.directory }) { "PhotoManiak already exists as a file or is ambiguous. Choose another parent folder." }
+            return matches.singleOrNull()
+        }
+        existing()?.let { return it.path }
+        val body=JSONObject().put("name","PhotoManiak").put("only_for_me",false).toString().toRequestBody("application/json".toMediaType())
+        val request=Request.Builder().url(endpoint("3/drive/${account.driveId}/files/${fileId(parent)}/directory")).post(body).build()
+        try {
+            collectionHttp.newCall(request).execute().use { response ->
+                checkResponse(response)
+                require(JSONObject(response.body?.string() ?: "{}").optString("result")=="success") { "Folder creation was not confirmed" }
+            }
+        } catch(e: Exception) {
+            // A concurrent device or a lost response may have created it. Only adopt the exact folder.
+            return existing()?.path ?: throw e
+        }
+        return existing()?.path ?: throw IOException("The new PhotoManiak folder is not visible yet. Try again.")
+    }
+
+    fun readCollection(entry: RemoteEntry): String {
+        require(!entry.directory && CollectionJson.isFilename(entry.name))
+        return http.newCall(Request.Builder().url(url(entry.path)).get().build()).execute().use { response ->
+            checkResponse(response)
+            val body=response.body ?: throw IOException("Empty collection response")
+            require(body.contentLength() <= CollectionJson.MAX_BYTES) { "Collection file is too large" }
+            val source=body.source()
+            source.request(CollectionJson.MAX_BYTES.toLong()+1)
+            require(source.buffer.size <= CollectionJson.MAX_BYTES) { "Collection file is too large" }
+            source.readUtf8()
+        }
+    }
+
+    fun uploadCollection(folder: String, batch: CollectionDb.Batch) {
+        require(fileId(folder)!="1" && CollectionJson.isFilename(batch.name))
+        CollectionJson.decode(batch.text,account.driveId)
+        val bytes=batch.text.toByteArray(Charsets.UTF_8)
+        val now=(System.currentTimeMillis()/1000).toString()
+        val url=endpoint("3/drive/${account.driveId}/upload").newBuilder()
+            .addQueryParameter("directory_id",fileId(folder)).addQueryParameter("file_name",batch.name)
+            .addQueryParameter("total_size",bytes.size.toString()).addQueryParameter("conflict","error")
+            .addQueryParameter("created_at",now).addQueryParameter("last_modified_at",now).build()
+        collectionHttp.newCall(Request.Builder().url(url).post(bytes.toRequestBody("application/octet-stream".toMediaType())).build()).execute().use { response ->
+            checkResponse(response)
+            if(JSONObject(response.body?.string() ?: "{}").optString("result")!="success") throw IOException("Collection upload was not confirmed. Your changes remain saved on this phone.")
         }
     }
 

@@ -1,5 +1,18 @@
 # Verification
 
+## Version 0.6.0 — November 12, 2026
+
+- APK build, Android Lint, 52 JVM tests, and 22 Android 15 device tests passed.
+- Collection tests cover deterministic merging of concurrent edits, removal markers, deleted-album handling, file ID stability after moves/renames, schema and drive validation, create-only upload parameters, redirect rejection, uncertain-upload recovery, and keeping failed uploads pending.
+- Device tests cover SQLite persistence after reopening, durable outbox bytes, edits made during upload, transactional rejection of altered edit IDs, republishing after changing sync locations, and Lamport clock advancement.
+- UI tests exercise viewer favorite/archive actions and album creation, renaming, deletion confirmation/cancellation. Existing timeline scroll restoration, selection/trash confirmation, appearance, and sharing checks continue to pass.
+- No real cloud files were created, uploaded, or deleted during testing. Collection synchronization uses a mock server; live kDrive write permissions and cross-device behavior should be checked with the user's account.
+- The signing certificate and application ID match 0.5.0 for in-place updates.
+
+APK: `PhotoManiak-0.6.0-debug.apk`.
+
+SHA-256: `9599c981a353082c70a73391d07a7639c6e7aee7e0b610943c861c035cea6fdf`.
+
 ## Version 0.5.0 — November 3, 2026
 
 - APK build, Android Lint, 37 JVM tests, and 15 Android 15 device tests passed.

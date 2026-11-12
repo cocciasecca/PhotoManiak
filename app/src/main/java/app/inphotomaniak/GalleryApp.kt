@@ -27,30 +27,35 @@ import androidx.lifecycle.viewmodel.compose.viewModel
     if(!s.ready) { Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) { CircularProgressIndicator() }; return }
     if(s.account==null) { Login(s,model); return }
     val grid = rememberLazyGridState()
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { model.syncCollections() }
     val current = selected
     // Freeze the ordering during a viewing session while indexing updates the timeline.
-    val viewerAssets = remember(current) { s.assets }
+    val visible=s.visibleAssets()
+    val viewerAssets = remember(current) { visible }
     if(current != null && viewerAssets.any { it.entry.path==current }) {
         Viewer(viewerAssets,viewerAssets.indexOfFirst { it.entry.path==current },model) { selected=null }; return
     }
+    androidx.activity.compose.BackHandler(s.screen=="timeline" && s.collectionView!="all") { model.screen("collections") }
     Scaffold(
         topBar={ TopAppBar(title={ Column { Text(stringResource(R.string.app_name),fontWeight=FontWeight.Bold); Text(stringResource(R.string.app_tagline),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary) } }, actions={
             if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,stringResource(R.string.stop_scan)) }
             else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,stringResource(R.string.refresh_library)) }
         }) },
         bottomBar={ NavigationBar {
-            listOf(Triple("timeline",stringResource(R.string.photos),Icons.Outlined.PhotoLibrary),Triple("folders",stringResource(R.string.folders),Icons.Outlined.Folder),Triple("settings",stringResource(R.string.settings),Icons.Outlined.Settings)).forEach { (key,label,icon) ->
-                NavigationBarItem(selected=s.screen==key,onClick={model.screen(key)},icon={Icon(icon,label)},label={Text(label)})
+            listOf(Triple("timeline",stringResource(R.string.photos),Icons.Outlined.PhotoLibrary),Triple("collections",stringResource(R.string.collections),Icons.Outlined.CollectionsBookmark),Triple("folders",stringResource(R.string.folders),Icons.Outlined.Folder),Triple("settings",stringResource(R.string.settings),Icons.Outlined.Settings)).forEach { (key,label,icon) ->
+                NavigationBarItem(selected=s.screen==key,onClick={if(key=="timeline") model.collectionView("all") else model.screen(key)},icon={Icon(icon,label)},label={Text(label)})
             }
         } }
     ) { padding -> Column(Modifier.padding(padding).fillMaxSize()) {
         if(s.busy || s.scanning) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(s.progress.isNotBlank()) Text(s.progress,Modifier.padding(horizontal=20.dp,vertical=6.dp),style=MaterialTheme.typography.labelMedium)
         s.error?.let { ErrorCard(it,model::clearError) }
+        if(s.syncError!=null && s.screen!="settings") TextButton(onClick={model.screen("settings")}) { Text(stringResource(R.string.collection_sync_problem)) }
         when(s.screen) {
             "folders" -> FolderScreen(s,model)
             "settings" -> SettingsScreen(s,model)
-            else -> Timeline(s,model,grid) { selected=it.entry.path }
+            "collections" -> CollectionsScreen(s,model)
+            else -> key(s.collectionView,s.albumId) { Timeline(s.copy(assets=visible),model,grid) { selected=it.entry.path } }
         }
     } }
 }

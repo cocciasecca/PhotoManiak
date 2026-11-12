@@ -71,3 +71,7 @@ The trash route matches `deleteFile` in the [official Android client](https://gi
 `Theme.kt` defines coordinated light/dark palettes. The stored appearance mode resolves against Android’s current night configuration in System mode. The viewer retains a dark palette for its black media background and restores system-bar contrast when closed.
 
 The single launcher icon uses adaptive resources from API 26, with a separate monochrome layer from API 33. Its foreground remains inside the central safe area of a 108dp canvas. The launcher supplies the mask and any supported motion effects. Themed-icon colors are chosen by Android, independently of the in-app light/dark override.
+
+## Collections and sync (0.6.0)
+
+Favorites, archive, and virtual albums are stored in a separate local SQLite database. Optional synchronization publishes immutable JSON edit batches inside a user-selected `PhotoManiak` directory on kDrive. Cloud media is never moved or rewritten by collection actions. See [COLLECTIONS.md](COLLECTIONS.md) for the versioned format, merge rules, retry behavior, privacy, and limitations.

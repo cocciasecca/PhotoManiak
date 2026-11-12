@@ -25,11 +25,12 @@ class ViewerSettingsTest {
 
     @Before fun setup() {
         Settings(context).clear()
+        CollectionDb(context).use { it.clear() }
         model=GalleryModel(context.applicationContext as Application)
         store.put("gallery",model)
         compose.waitUntil(5000) { model.state.value.ready }
     }
-    @After fun cleanup() { store.clear();Settings(context).clear() }
+    @After fun cleanup() { store.clear();Settings(context).clear();CollectionDb(context).use { it.clear() } }
 
     @Test fun settingsSelectionUpdatesAndPersists() {
         compose.setContent {
@@ -99,6 +100,49 @@ class ViewerSettingsTest {
         compose.onNodeWithText("Move to trash").assertDoesNotExist()
         compose.onNodeWithTag("media:/2~photo0.jpg").assertIsSelected()
         compose.onNodeWithTag("media:/3~photo1.jpg").assertIsSelected()
+    }
+
+    @Test fun favoriteAndArchiveControlsPersistWithoutNetwork() {
+        val asset=library().assets.first()
+        compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { Viewer(listOf(asset),0,model) {} } }
+        compose.onNodeWithContentDescription("Favorite").performClick()
+        compose.waitUntil(5000) { !model.state.value.busy && "2" in model.state.value.collections.favorites }
+        compose.onNodeWithContentDescription("Remove favorite").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Archive").performClick()
+        compose.waitUntil(5000) { !model.state.value.busy && "2" in model.state.value.collections.archived }
+        compose.onNodeWithContentDescription("Unarchive").assertIsDisplayed()
+        CollectionDb(context).use { assertEquals(setOf("2"),it.snapshot().favorites);assertEquals(setOf("2"),it.snapshot().archived) }
+    }
+
+    @Test fun virtualAlbumCanBeCreatedFromViewerThenRenamedAndDeletedWithoutRemovingMedia() {
+        val asset=library().assets.first()
+        val showCollections=mutableStateOf(false)
+        compose.setContent {
+            val state by model.state.collectAsState()
+            PhotoManiakTheme(ThemeMode.LIGHT) {
+                if(showCollections.value) CollectionsScreen(state.copy(assets=listOf(asset)),model)
+                else Viewer(listOf(asset),0,model) {}
+            }
+        }
+        compose.onNodeWithContentDescription("Add to album").performClick()
+        compose.onNodeWithText("New album").performClick()
+        compose.onNodeWithText("Album name").performTextInput("Holiday")
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5000) { !model.state.value.busy && model.state.value.collections.albums.size==1 }
+        assertEquals(setOf("2"),model.state.value.collections.albums.single().members)
+        compose.runOnIdle { showCollections.value=true }
+        compose.onNodeWithText("Holiday").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Rename album").performClick()
+        compose.onNodeWithText("Album name").performTextReplacement("Summer")
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5000) { !model.state.value.busy && model.state.value.collections.albums.single().name=="Summer" }
+        compose.onNodeWithContentDescription("Delete album").performClick()
+        compose.onNodeWithText("Only the virtual album will be deleted. The original photos and videos stay on kDrive.").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(1,model.state.value.collections.albums.size)
+        compose.onNodeWithContentDescription("Delete album").performClick()
+        compose.onNodeWithText("Delete album").performClick()
+        compose.waitUntil(5000) { !model.state.value.busy && model.state.value.collections.albums.isEmpty() }
     }
 
     @Test fun appearanceFollowsSystemUnlessExplicitlyOverridden() {

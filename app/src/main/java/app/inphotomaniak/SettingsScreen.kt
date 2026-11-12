@@ -28,13 +28,15 @@ import androidx.compose.ui.unit.dp
             }
         }
         HorizontalDivider()
+        CollectionSyncSettings(s,model)
+        HorizontalDivider()
         Text(stringResource(R.string.signed_in_token));Text(stringResource(R.string.connected_drive,s.account?.driveId.orEmpty()),color=MaterialTheme.colorScheme.primary)
         HorizontalDivider()
         Text(stringResource(R.string.folder_count,s.rules.included.size,s.rules.excluded.size))
         Text(stringResource(R.string.cache_description))
         Text(stringResource(R.string.metadata_description),style=MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.app_about,BuildConfig.VERSION_NAME),style=MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning) { Text(stringResource(R.string.sign_out_clear)) }
+        OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning && !s.syncing) { Text(stringResource(R.string.sign_out_clear)) }
     }
-    if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.sign_out_title))},text={Text(stringResource(R.string.sign_out_description))},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text(stringResource(R.string.sign_out)) }},dismissButton={TextButton(onClick={confirm=false}) { Text(stringResource(R.string.cancel)) }})
+    if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.sign_out_title))},text={Text(stringResource(if(s.pendingEdits>0) R.string.sign_out_unsynced else R.string.sign_out_description))},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text(stringResource(R.string.sign_out)) }},dismissButton={TextButton(onClick={confirm=false}) { Text(stringResource(R.string.cancel)) }})
 }

@@ -31,13 +31,14 @@ import kotlinx.coroutines.launch
     if(s.assets.isEmpty()) {
         Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
             Icon(Icons.Outlined.PhotoLibrary,null,Modifier.size(64.dp),tint=MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(20.dp));Text(stringResource(R.string.empty_title),style=MaterialTheme.typography.headlineSmall)
-            Text(if(s.scanning) stringResource(R.string.exploring_folders) else if(s.rules.included.isEmpty()) stringResource(R.string.empty_choose_folders) else stringResource(R.string.empty_refresh),Modifier.padding(vertical=12.dp))
+            Spacer(Modifier.height(20.dp));Text(stringResource(if(s.collectionView=="all") R.string.empty_title else R.string.empty_collection),style=MaterialTheme.typography.headlineSmall)
+            Text(if(s.collectionView!="all") stringResource(R.string.empty_collection_help) else if(s.scanning) stringResource(R.string.exploring_folders) else if(s.rules.included.isEmpty()) stringResource(R.string.empty_choose_folders) else stringResource(R.string.empty_refresh),Modifier.padding(vertical=12.dp))
             if(s.rules.included.isEmpty()) Button(onClick={model.screen("folders")}) { Text(stringResource(R.string.choose_folders)) }
         };return
     }
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selectedPaths by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    var addToAlbum by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var sharing by remember { mutableStateOf(false) }
     var shareError by remember { mutableStateOf<String?>(null) }
@@ -63,6 +64,7 @@ import kotlinx.coroutines.launch
         confirmDelete=false
         model.deleteAssets(selectedAssets.map { it.entry.path }.toSet()) { deleted -> selectedPaths=ArrayList(selectedPaths.filterNot { it in deleted }) }
     }
+    if(addToAlbum) AddToAlbumDialog(s,model,selectedAssets) { addToAlbum=false }
     Column {
         shareError?.let { ErrorCard(it) { shareError=null } }
         if(selecting) {
@@ -82,8 +84,21 @@ import kotlinx.coroutines.launch
                 TextButton(enabled=!locked && !s.scanning && selectedAssets.isNotEmpty(),onClick={confirmDelete=true}) { Text(stringResource(R.string.delete)) }
             }
         }
+        if(selecting && selectedAssets.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=8.dp)) {
+            val allFavorite=selectedAssets.all { it.entry.collectionId() in s.collections.favorites }
+            val allArchived=selectedAssets.all { it.entry.collectionId() in s.collections.archived }
+            TextButton(enabled=!locked,onClick={model.favorite(selectedAssets,!allFavorite)}) { Text(stringResource(if(allFavorite) R.string.unfavorite else R.string.favorite)) }
+            TextButton(enabled=!locked,onClick={model.archive(selectedAssets,!allArchived);selectedPaths=arrayListOf();selecting=false}) { Text(stringResource(if(allArchived) R.string.unarchive else R.string.archive)) }
+            TextButton(enabled=!locked,onClick={addToAlbum=true}) { Text(stringResource(R.string.add_to_album)) }
+            if(s.collectionView=="album" && s.albumId!=null) TextButton(enabled=!locked,onClick={model.albumMembers(s.albumId,selectedAssets,false);selectedPaths=arrayListOf();selecting=false}) { Text(stringResource(R.string.remove_from_album)) }
+        }
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text(stringResource(R.string.timeline_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+            Text(when(s.collectionView) {
+                "favorites" -> stringResource(R.string.favorites)
+                "archive" -> stringResource(R.string.archive)
+                "album" -> s.collections.albums.firstOrNull { it.id==s.albumId }?.name.orEmpty()
+                else -> stringResource(R.string.timeline_title)
+            },Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
             if(!selecting) IconButton(enabled=!locked,onClick={selecting=true}) {
                 Icon(Icons.Outlined.Checklist,stringResource(R.string.select_photos))
             }
@@ -117,6 +132,7 @@ import kotlinx.coroutines.launch
                             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha=.25f)))
                             Icon(Icons.Outlined.CheckCircle,stringResource(R.string.selected),Modifier.align(Alignment.TopStart).padding(6.dp),tint=MaterialTheme.colorScheme.primary)
                         }
+                        if(asset.entry.collectionId() in s.collections.favorites) Icon(Icons.Outlined.Favorite,stringResource(R.string.favorite),Modifier.align(Alignment.BottomStart).padding(6.dp).size(18.dp),tint=Color.White)
                         if(asset.entry.video) Icon(Icons.Outlined.PlayCircle,stringResource(R.string.video),Modifier.align(Alignment.BottomEnd).padding(6.dp),tint=Color.White)
                         if(!asset.metadataRead) Icon(Icons.Outlined.Schedule,stringResource(R.string.provisional_date),Modifier.align(Alignment.TopEnd).padding(6.dp).size(16.dp),tint=Color.White)
                     }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 — 2026-11-12
+
+- Add Favorites, Archive, and virtual albums with persistent offline storage.
+- Add collection actions in the viewer and multi-selection timeline, including removing items from an album.
+- Add a Collections tab for browsing and managing albums; deleting an album leaves originals untouched.
+- Add optional kDrive JSON synchronization in a user-selected location, with immutable change files, deterministic conflict merging, removal markers, and a durable retry outbox.
+- Preserve references across renaming/moving originals using drive file IDs; respect each device's selected photo folders.
+- Show synchronization errors/pending edits and warn before signing out with unsynced changes.
+
 ## 0.5.0
 
 - Add persistent System, Light, and Dark appearance options, with System as the default.
