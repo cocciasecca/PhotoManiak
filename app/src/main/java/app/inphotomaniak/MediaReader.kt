@@ -61,37 +61,44 @@ object MediaReader {
         return driveClient.http.newCall(req).execute().use { response ->
             driveClient.checkResponse(response)
             val stream = response.body?.byteStream() ?: throw IOException("Empty file")
-            val exif = ExifInterface(LimitedStream(stream,16L*1024*1024))
-            val tags = mutableMapOf<String,String>()
-            fun add(key: String, dateTag: String, offsetTag: String, subsecTag: String, subsecKey: String) {
-                val value = exif.getAttribute(dateTag) ?: return
-                val offset = exif.getAttribute(offsetTag).orEmpty()
-                tags[key] = value + offset
-                val subsec = exif.getAttribute(subsecTag)?.filter { it.isDigit() }?.take(9)
-                if(!subsec.isNullOrEmpty()) tags[subsecKey] = "$value.$subsec$offset"
-            }
-            add("DateTimeOriginal",ExifInterface.TAG_DATETIME_ORIGINAL,ExifInterface.TAG_OFFSET_TIME_ORIGINAL,ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,"SubSecDateTimeOriginal")
-            add("CreateDate",ExifInterface.TAG_DATETIME_DIGITIZED,ExifInterface.TAG_OFFSET_TIME_DIGITIZED,ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,"SubSecCreateDate")
-            val gps = exif.gpsDateTime ?: -1L
-            if(gps > 0) tags["GPSDateTime"] = java.time.Instant.ofEpochMilli(gps).toString()
-            exif.getAttribute(ExifInterface.TAG_XMP)?.let { xmp ->
-                // XmlPullParser does not fetch external entities. No remote sidecar fetching.
-                runCatching {
-                    val parser = Xml.newPullParser(); parser.setInput(xmp.reader())
-                    while(parser.eventType != XmlPullParser.END_DOCUMENT) {
-                        if(parser.eventType == XmlPullParser.START_TAG) {
-                            for(i in 0 until parser.attributeCount) {
-                                val key = parser.getAttributeName(i).substringAfter(':')
-                                if(key in Dates.priority) tags.putIfAbsent(key,parser.getAttributeValue(i))
-                            }
-                            val key = parser.name.substringAfter(':')
-                            if(key in Dates.priority) tags.putIfAbsent(key,parser.nextText())
+            photoTags(stream)
+        }
+    }
+
+    internal fun photoTags(stream: InputStream): Map<String,String> {
+        val exif = ExifInterface(LimitedStream(stream,16L*1024*1024))
+        val tags = mutableMapOf<String,String>()
+        exif.latLong?.let { tags["Latitude"]=it[0].toString();tags["Longitude"]=it[1].toString() }
+        listOf("Camera" to ExifInterface.TAG_MODEL,"Make" to ExifInterface.TAG_MAKE,"Width" to ExifInterface.TAG_IMAGE_WIDTH,"Height" to ExifInterface.TAG_IMAGE_LENGTH).forEach { (key,tag) -> exif.getAttribute(tag)?.let { tags[key]=it } }
+
+        fun add(key: String, dateTag: String, offsetTag: String, subsecTag: String, subsecKey: String) {
+            val value = exif.getAttribute(dateTag) ?: return
+            val offset = exif.getAttribute(offsetTag).orEmpty()
+            tags[key] = value + offset
+            val subsec = exif.getAttribute(subsecTag)?.filter { it.isDigit() }?.take(9)
+            if(!subsec.isNullOrEmpty()) tags[subsecKey] = "$value.$subsec$offset"
+        }
+        add("DateTimeOriginal",ExifInterface.TAG_DATETIME_ORIGINAL,ExifInterface.TAG_OFFSET_TIME_ORIGINAL,ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,"SubSecDateTimeOriginal")
+        add("CreateDate",ExifInterface.TAG_DATETIME_DIGITIZED,ExifInterface.TAG_OFFSET_TIME_DIGITIZED,ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,"SubSecCreateDate")
+        val gps = exif.gpsDateTime ?: -1L
+        if(gps > 0) tags["GPSDateTime"] = java.time.Instant.ofEpochMilli(gps).toString()
+        exif.getAttribute(ExifInterface.TAG_XMP)?.let { xmp ->
+            // XmlPullParser does not fetch external entities. No remote sidecar fetching.
+            runCatching {
+                val parser = Xml.newPullParser(); parser.setInput(xmp.reader())
+                while(parser.eventType != XmlPullParser.END_DOCUMENT) {
+                    if(parser.eventType == XmlPullParser.START_TAG) {
+                        for(i in 0 until parser.attributeCount) {
+                            val key = parser.getAttributeName(i).substringAfter(':')
+                            if(key in Dates.priority) tags.putIfAbsent(key,parser.getAttributeValue(i))
                         }
-                        parser.next()
+                        val key = parser.name.substringAfter(':')
+                        if(key in Dates.priority) tags.putIfAbsent(key,parser.nextText())
                     }
+                    parser.next()
                 }
             }
-            tags
         }
+        return tags
     }
 }

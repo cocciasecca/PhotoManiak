@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
             }
         }
         HorizontalDivider()
+        PaletteSettings(s,model)
+        HorizontalDivider()
         CollectionSyncSettings(s,model)
         HorizontalDivider()
         Text(stringResource(R.string.signed_in_token));Text(stringResource(R.string.connected_drive,s.account?.driveId.orEmpty()),color=MaterialTheme.colorScheme.primary)

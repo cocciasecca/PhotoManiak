@@ -37,7 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
     }
     androidx.activity.compose.BackHandler(s.screen=="timeline" && s.collectionView!="all") { model.screen("collections") }
     Scaffold(
-        topBar={ TopAppBar(title={ Column { Text(stringResource(R.string.app_name),fontWeight=FontWeight.Bold); Text(stringResource(R.string.app_tagline),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary) } }, actions={
+        topBar={ TopAppBar(title={ Text(stringResource(R.string.app_name),fontWeight=FontWeight.Bold) }, actions={
             CastButton(model.casting)
             if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,stringResource(R.string.stop_scan)) }
             else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,stringResource(R.string.refresh_library)) }

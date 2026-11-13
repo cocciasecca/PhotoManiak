@@ -37,13 +37,16 @@ import kotlinx.coroutines.launch
         activity?.themeSystemBars(true)
         onDispose { activity?.themeSystemBars(parentDark) }
     }
-    MaterialTheme(colorScheme=DarkColors) { ViewerContent(assets,initial,model,onClose) }
+    val state by model.state.collectAsStateWithLifecycle()
+    MaterialTheme(colorScheme=paletteColors(true,state.colorPalette,state.customColor)) { ViewerContent(assets,initial,model,onClose) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun ViewerContent(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
     val pager=rememberPagerState(initialPage=initial) { assets.size }
     var addToAlbum by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]
     val state by model.state.collectAsStateWithLifecycle()
     val casting by model.casting.state.collectAsStateWithLifecycle()
@@ -61,7 +64,7 @@ import kotlinx.coroutines.launch
         model.deleteAssets(setOf(asset.entry.path)) { deleted -> if(asset.entry.path in deleted) { if(casting.connected) model.casting.stop();onClose() } }
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=if(casting.connected) 240.dp else 128.dp),key={assets[it].entry.path}) { index ->
+        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=if(casting.connected) 240.dp else 80.dp),key={assets[it].entry.path}) { index ->
             val item=assets[index]
             if(item.entry.video) { if(index==pager.currentPage && !casting.connected) VideoPlayer(item,model) else if(casting.connected) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) { Icon(Icons.Outlined.CastConnected,stringResource(R.string.cast),Modifier.size(64.dp)) } }
             else {
@@ -79,22 +82,25 @@ import kotlinx.coroutines.launch
         IconButton(onClick=onClose,modifier=Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(8.dp).background(Color.Black.copy(alpha=.45f),RoundedCornerShape(50))) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.back_to_timeline),tint=Color.White)
         }
+        Row(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(8.dp).background(Color.Black.copy(alpha=.45f),RoundedCornerShape(50))) {
+            val favorite=asset.entry.collectionId() in state.collections.favorites
+            val archived=asset.entry.collectionId() in state.collections.archived
+            IconToggleButton(checked=favorite,enabled=!state.busy && !sharing,onCheckedChange={model.favorite(listOf(asset),it)}) {
+                Icon(if(favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,stringResource(if(favorite) R.string.unfavorite else R.string.favorite),tint=Color.White)
+            }
+            Box {
+                IconButton(onClick={menu=true}) { Icon(Icons.Outlined.MoreVert,stringResource(R.string.more_options),tint=Color.White) }
+                DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
+                    CastMenuItem(model.casting) { menu=false }
+                    DropdownMenuItem(text={Text(stringResource(R.string.add_to_album))},leadingIcon={Icon(Icons.Outlined.AddPhotoAlternate,null)},enabled=!state.busy && !sharing,onClick={menu=false;addToAlbum=true})
+                    DropdownMenuItem(text={Text(stringResource(if(archived) R.string.unarchive else R.string.archive))},leadingIcon={Icon(if(archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,null)},enabled=!state.busy && !sharing,onClick={menu=false;model.archive(listOf(asset),!archived)})
+                }
+            }
+        }
         Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding().fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
             CastControls(model.casting)
             state.error?.let { ErrorCard(it,model::clearError) }
             shareError?.let { ErrorCard(it) { shareError=null } }
-            Row(horizontalArrangement=Arrangement.spacedBy(24.dp)) {
-                CastButton(model.casting)
-                val favorite=asset.entry.collectionId() in state.collections.favorites
-                val archived=asset.entry.collectionId() in state.collections.archived
-                IconToggleButton(checked=favorite,enabled=!state.busy && !sharing,onCheckedChange={model.favorite(listOf(asset),it)}) {
-                    Icon(if(favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,stringResource(if(favorite) R.string.unfavorite else R.string.favorite))
-                }
-                IconButton(enabled=!state.busy && !sharing,onClick={model.archive(listOf(asset),!archived)}) {
-                    Icon(if(archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,stringResource(if(archived) R.string.unarchive else R.string.archive))
-                }
-                IconButton(enabled=!state.busy && !sharing,onClick={addToAlbum=true}) { Icon(Icons.Outlined.AddPhotoAlternate,stringResource(R.string.add_to_album)) }
-            }
             Row(Modifier.padding(horizontal=24.dp,vertical=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 TextButton(enabled=!sharing && !state.busy,onClick={
                     val selectedAsset=asset
@@ -122,5 +128,5 @@ import kotlinx.coroutines.launch
         }
     }
     if(addToAlbum) AddToAlbumDialog(state,model,listOf(asset)) { addToAlbum=false }
-    if(details) AlertDialog(onDismissRequest={details=false},title={Text(asset.entry.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {Text(dayLabel(asset.date.day));Text(stringResource(if(asset.metadataRead) R.string.date_source else R.string.date_source_provisional,dateSourceLabel(asset.date.source)));Text(DriveClient.displayPath(asset.entry.path))}},confirmButton={TextButton(onClick={details=false}){Text(stringResource(R.string.close))}})
+    if(details) PhotoInfoSheet(asset,model) { details=false }
 }

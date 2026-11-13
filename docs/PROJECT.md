@@ -9,6 +9,9 @@ A native Android gallery for existing Infomaniak kDrive photos and videos. Each 
 - A unified timeline grouped by capture day, newest first.
 - Photo zoom, swipe navigation, video playback, and original-file sharing.
 - Small, Medium, and Large thumbnail preferences, stored locally.
+- Persistent preset, wallpaper, or custom color schemes with System/Light/Dark appearance.
+- Scrollable Info bottom sheet with on-demand EXIF GPS coordinates and camera details; no geocoding.
+- Viewer Favorite and overflow menu at the top right, with Cast, Add to album, and Archive.
 - English UI; viewer with a back arrow and bottom Share/Delete/Info buttons, without a top toolbar or item counter.
 - Thousands of items supported through a local index, paginated API listing, lazy grids, and thumbnail caching.
 - Confirmed moves of individual media files to the kDrive trash; no uploads, permanent deletion, renaming, folder deletion, or deduplication.

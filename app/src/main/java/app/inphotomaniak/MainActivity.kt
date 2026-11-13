@@ -25,7 +25,7 @@ class MainActivity: FragmentActivity() {
         setContent {
             val model: GalleryModel = viewModel()
             val state by model.state.collectAsStateWithLifecycle()
-            PhotoManiakTheme(state.themeMode) {
+            PhotoManiakTheme(state.themeMode,state.colorPalette,state.customColor) {
                 Surface(Modifier.fillMaxSize()) { GalleryApp(model) }
             }
         }

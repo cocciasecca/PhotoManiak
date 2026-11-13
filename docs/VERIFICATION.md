@@ -1,5 +1,19 @@
 # Verification
 
+## Version 0.7.1 — November 14, 2026
+
+- APK build, Android Lint, and all 61 JVM tests passed.
+- 27 Android 15 device tests passed; the Google-dependent Cast picker test was skipped on that emulator.
+- Palette tests cover saved presets/custom hex values, cancellation, restoration, invalid preferences, and text contrast across 36 hues plus grayscale in light/dark modes.
+- An additional integration test passed on the Google Play services emulator: the new Cast menu entry opens the official native device picker. No physical receiver playback was tested.
+- Viewer regressions cover the scrollable Info sheet and dismissal, overflow actions for Archive and Add to album, Favorites, and the no-Google-Play-services explanation.
+- A generated JPEG fixture verifies signed EXIF GPS coordinates, camera metadata, and absent GPS. No geocoding service or real kDrive account was used.
+- The signing certificate and application ID match earlier releases for in-place updates.
+
+APK: `PhotoManiak-0.7.1-debug.apk`.
+
+SHA-256: `6d593ba15c42066aa11d6efd393ad4e91fbebbd5918507df59cf2da47823e218`.
+
 ## Version 0.7.0 — November 13, 2026
 
 - APK build, Android Lint, and all 61 JVM tests passed.

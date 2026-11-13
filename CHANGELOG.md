@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 — 2026-11-14
+
+- Add persistent color schemes: Green, Blue, Purple, Orange, Wallpaper, and Custom.
+- Add a custom color picker with hue slider and hex input, generating readable light/dark shades. Wallpaper colors require Android 12+ and fall back to green on older Android versions.
+- Apply the selected palette to gallery surfaces and viewer controls while preserving the dark media viewer.
+- Remove promotional slogans from the login screen, app header, empty timeline, and media count; use concise functional labels.
+
+
+- Replace the Info dialog with a scrollable bottom sheet showing available EXIF GPS coordinates, camera, and dimensions.
+- Move Favorite to the top right and group Cast, Add to album, and Archive in the overflow menu.
+
 ## 0.7.0 — 2026-11-13
 
 - Add Google Cast device selection in the gallery and viewer.

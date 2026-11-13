@@ -47,12 +47,12 @@ internal fun ComponentActivity.themeSystemBars(dark: Boolean) {
     enableEdgeToEdge(statusBarStyle=style,navigationBarStyle=style)
 }
 
-@Composable internal fun PhotoManiakTheme(mode: ThemeMode,content: @Composable () -> Unit) {
+@Composable internal fun PhotoManiakTheme(mode: ThemeMode,palette: ColorPalette = ColorPalette.FOREST,customColor: String = DEFAULT_CUSTOM_COLOR,content: @Composable () -> Unit) {
     val dark=mode.isDark(isSystemInDarkTheme())
     val activity=LocalContext.current.activity()
     DisposableEffect(activity,dark) {
         activity?.themeSystemBars(dark)
         onDispose { }
     }
-    MaterialTheme(colorScheme=if(dark) DarkColors else LightColors,content=content)
+    MaterialTheme(colorScheme=paletteColors(dark,palette,customColor),content=content)
 }

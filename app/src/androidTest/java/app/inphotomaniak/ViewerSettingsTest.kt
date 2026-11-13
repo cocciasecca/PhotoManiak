@@ -53,8 +53,8 @@ class ViewerSettingsTest {
         compose.setContent { MaterialTheme(colorScheme=darkColorScheme()) { Viewer(listOf(asset),0,model) {closed=true} } }
         compose.onNodeWithText("Share").assertIsDisplayed().assertHasClickAction()
         compose.onNodeWithText("Info").assertIsDisplayed().performClick()
-        compose.onNodeWithText("Date source: Filename").assertIsDisplayed()
-        compose.onNodeWithText("Close").performClick()
+        compose.onNodeWithText("Date source: Filename").performScrollTo().assertIsDisplayed()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         compose.onNodeWithText("1 / 1").assertDoesNotExist()
         val back=compose.onNodeWithContentDescription("Back to timeline")
         val share=compose.onNodeWithText("Share")
@@ -108,9 +108,11 @@ class ViewerSettingsTest {
         compose.onNodeWithContentDescription("Favorite").performClick()
         compose.waitUntil(5000) { !model.state.value.busy && "2" in model.state.value.collections.favorites }
         compose.onNodeWithContentDescription("Remove favorite").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Archive").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Archive").performClick()
         compose.waitUntil(5000) { !model.state.value.busy && "2" in model.state.value.collections.archived }
-        compose.onNodeWithContentDescription("Unarchive").assertIsDisplayed()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Unarchive").assertIsDisplayed()
         CollectionDb(context).use { assertEquals(setOf("2"),it.snapshot().favorites);assertEquals(setOf("2"),it.snapshot().archived) }
     }
 
@@ -124,7 +126,8 @@ class ViewerSettingsTest {
                 else Viewer(listOf(asset),0,model) {}
             }
         }
-        compose.onNodeWithContentDescription("Add to album").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Add to album").performClick()
         compose.onNodeWithText("New album").performClick()
         compose.onNodeWithText("Album name").performTextInput("Holiday")
         compose.onNodeWithText("Save").performClick()
@@ -149,7 +152,8 @@ class ViewerSettingsTest {
         if(com.google.android.gms.common.GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)==com.google.android.gms.common.ConnectionResult.SUCCESS) return
         val asset=library().assets.first()
         compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { Viewer(listOf(asset),0,model) {} } }
-        compose.onNodeWithContentDescription("Cast").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Cast").performClick()
         compose.onNodeWithText("Google Cast requires Google Play services on this phone. The rest of PhotoManiak works without them.").assertIsDisplayed()
         compose.onNodeWithText("Close").performClick()
         compose.onNodeWithText("Share").assertIsDisplayed()

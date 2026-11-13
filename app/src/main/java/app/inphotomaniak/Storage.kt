@@ -46,6 +46,12 @@ class Settings(context: Context) {
     fun save(size: ThumbnailSize) { check(prefs.edit().putString("thumbnail_size", size.name).commit()) }
     fun themeMode(): ThemeMode = ThemeMode.entries.firstOrNull { it.name == prefs.getString("theme_mode",null) } ?: ThemeMode.SYSTEM
     fun save(mode: ThemeMode) { check(prefs.edit().putString("theme_mode",mode.name).commit()) }
+    fun colorPalette(): ColorPalette = ColorPalette.entries.firstOrNull { it.name==prefs.getString("color_palette",null) } ?: ColorPalette.FOREST
+    fun customColor(): String = normalizeColor(prefs.getString("custom_color",DEFAULT_CUSTOM_COLOR).orEmpty()) ?: DEFAULT_CUSTOM_COLOR
+    fun save(palette: ColorPalette, customColor: String) {
+        val hex=requireNotNull(normalizeColor(customColor))
+        check(prefs.edit().putString("color_palette",palette.name).putString("custom_color",hex).commit())
+    }
     fun syncFolder(): String? = prefs.getString("collection_folder",null)
     fun syncFolder(path: String?) { check(prefs.edit().putString("collection_folder",path).commit()) }
     fun lastCollectionSync(): Long = prefs.getLong("collection_sync",0)

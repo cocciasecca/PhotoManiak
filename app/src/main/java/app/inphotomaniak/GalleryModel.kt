@@ -19,6 +19,7 @@ data class GalleryState(
     val collections: Collections = Collections(), val collectionView: String = "all", val albumId: String? = null,
     val syncFolder: String? = null, val syncing: Boolean = false, val syncError: String? = null,
     val pendingEdits: Int = 0, val lastSync: Long = 0,
+    val colorPalette: ColorPalette = ColorPalette.FOREST, val customColor: String = DEFAULT_CUSTOM_COLOR,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val screen: String = "timeline", val thumbnailSize: ThumbnailSize = ThumbnailSize.MEDIUM
 )
@@ -39,7 +40,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val account = settings.account()
         if(account != null) connect(account)
         val rules = settings.rules()
-        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
+        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),colorPalette=settings.colorPalette(),customColor=settings.customColor(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
     }; syncCollections() } }
     private fun connect(account: Account) {
         driveClient = DriveClient(account)
@@ -52,7 +53,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val client = DriveClient(account)
         val folders = client.list("/").filter { it.directory }
         // A fresh login must never inherit an unreadable previous account's data.
-        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); db.replace(emptyList()); collectionDb.clear()
+        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); settings.save(state.value.colorPalette,state.value.customColor); db.replace(emptyList()); collectionDb.clear()
         File(getApplication<Application>().cacheDir,"images").deleteRecursively()
         File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
         settings.save(account); connect(account)
@@ -132,6 +133,11 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
                 if(state.value.pendingEdits>0 && state.value.syncError==null) scheduleSync()
             }
         }
+    }
+    fun colorPalette(palette: ColorPalette, customColor: String = state.value.customColor) = operation {
+        val hex=requireNotNull(normalizeColor(customColor))
+        settings.save(palette,hex)
+        mutable.update { it.copy(colorPalette=palette,customColor=hex) }
     }
     fun themeMode(mode: ThemeMode) = operation {
         settings.save(mode)

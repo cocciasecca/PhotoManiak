@@ -61,3 +61,23 @@ import com.google.android.gms.cast.framework.CastButtonFactory
         }
     }
 }
+
+/** Uses the official route picker, with a full-width entry in the viewer menu. */
+@Composable internal fun CastMenuItem(controller: CastController,onSelected: ()->Unit) {
+    val state by controller.state.collectAsStateWithLifecycle()
+    val context=LocalContext.current
+    var help by remember { mutableStateOf(false) }
+    val button=remember(context,state.ready) {
+        if(state.ready) MediaRouteButton(ContextThemeWrapper(context,R.style.CastButtonDark)).apply {
+            CastButtonFactory.setUpMediaRouteButton(context,this)
+            setAlwaysVisible(true)
+        } else null
+    }
+    DropdownMenuItem(text={Text(stringResource(R.string.cast))},leadingIcon={
+        if(button!=null) AndroidView(factory={button},update={it.setOnClickListener { onSelected() }},modifier=Modifier.size(24.dp))
+        else Icon(Icons.Outlined.Cast,null)
+    },onClick={
+        if(button!=null) { button.performClick();onSelected() } else help=true
+    })
+    if(help) AlertDialog(onDismissRequest={help=false},title={Text(stringResource(R.string.cast))},text={Text(state.unavailable ?: stringResource(R.string.cast_initializing))},confirmButton={TextButton(onClick={help=false;onSelected()}) { Text(stringResource(R.string.close)) }})
+}

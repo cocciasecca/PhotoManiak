@@ -33,7 +33,7 @@ class CastIntegrationTest {
             lateinit var model: GalleryModel
             scenario.onActivity { activity ->
                 model=ViewModelProvider(activity)[GalleryModel::class.java]
-                activity.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { CastButton(model.casting) } }
+                activity.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { androidx.compose.foundation.layout.Column { CastMenuItem(model.casting) {} } } }
             }
             await(30000) { model.casting.state.value.ready || model.casting.state.value.unavailable!=null }
             assertTrue(model.casting.state.value.unavailable.orEmpty(),model.casting.state.value.ready)
