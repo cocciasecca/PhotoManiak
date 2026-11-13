@@ -75,3 +75,7 @@ The single launcher icon uses adaptive resources from API 26, with a separate mo
 ## Collections and sync (0.6.0)
 
 Favorites, archive, and virtual albums are stored in a separate local SQLite database. Optional synchronization publishes immutable JSON edit batches inside a user-selected `PhotoManiak` directory on kDrive. Cloud media is never moved or rewritten by collection actions. See [COLLECTIONS.md](COLLECTIONS.md) for the versioned format, merge rules, retry behavior, privacy, and limitations.
+
+## Google Cast (0.7.0)
+
+The official Google Cast sender SDK opens the default receiver. A revocable local HTTP relay serves a TV-sized JPEG or streams one kDrive video, keeping the bearer token on the phone. Cast controls remain visible in the viewer and gallery. See [CAST.md](CAST.md) for permissions, lifecycle, privacy, and physical-device testing limitations.

@@ -38,14 +38,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
     androidx.activity.compose.BackHandler(s.screen=="timeline" && s.collectionView!="all") { model.screen("collections") }
     Scaffold(
         topBar={ TopAppBar(title={ Column { Text(stringResource(R.string.app_name),fontWeight=FontWeight.Bold); Text(stringResource(R.string.app_tagline),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary) } }, actions={
+            CastButton(model.casting)
             if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,stringResource(R.string.stop_scan)) }
             else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,stringResource(R.string.refresh_library)) }
         }) },
-        bottomBar={ NavigationBar {
+        bottomBar={ Column { CastControls(model.casting); NavigationBar {
             listOf(Triple("timeline",stringResource(R.string.photos),Icons.Outlined.PhotoLibrary),Triple("collections",stringResource(R.string.collections),Icons.Outlined.CollectionsBookmark),Triple("folders",stringResource(R.string.folders),Icons.Outlined.Folder),Triple("settings",stringResource(R.string.settings),Icons.Outlined.Settings)).forEach { (key,label,icon) ->
                 NavigationBarItem(selected=s.screen==key,onClick={if(key=="timeline") model.collectionView("all") else model.screen(key)},icon={Icon(icon,label)},label={Text(label)})
             }
-        } }
+        } } }
     ) { padding -> Column(Modifier.padding(padding).fillMaxSize()) {
         if(s.busy || s.scanning) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(s.progress.isNotBlank()) Text(s.progress,Modifier.padding(horizontal=20.dp,vertical=6.dp),style=MaterialTheme.typography.labelMedium)

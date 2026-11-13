@@ -3,7 +3,7 @@ package app.inphotomaniak
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.util.Locale
 
-class MainActivity: ComponentActivity() {
+class MainActivity: FragmentActivity() {
     override fun attachBaseContext(base: Context) {
         val config = Configuration(base.resources.configuration).apply { setLocale(Locale.ENGLISH) }
         super.attachBaseContext(base.createConfigurationContext(config))

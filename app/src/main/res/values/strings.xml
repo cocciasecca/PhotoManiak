@@ -121,4 +121,17 @@
     <string name="sync_folder_help">Choose a writable parent folder. PhotoManiak will create or reuse a PhotoManiak subfolder for its metadata. People with access to that folder can read these collections.</string>
     <string name="collection_sync_problem">Collections could not sync. Open settings</string>
     <string name="sign_out_unsynced">There are collection edits that have not been synced. Signing out clears them, along with credentials and local data. Sync first if you want to keep them.</string>
+    <string name="cast">Cast</string>
+    <string name="cast_requires_play">Google Cast requires Google Play services on this phone. The rest of PhotoManiak works without them.</string>
+    <string name="cast_init_failed">Google Cast could not start. Check Google Play services and reopen the app.</string>
+    <string name="cast_initializing">Starting Google Cast… Please try again in a moment.</string>
+    <string name="cast_connect_failed">Could not connect to the TV. Make sure both devices are on the same Wi-Fi network.</string>
+    <string name="cast_wifi_required">Connect the phone and TV to the same Wi-Fi network, without a VPN.</string>
+    <string name="cast_play_failed">Could not play this item on the TV. Check the Wi-Fi connection and try opening the item again. Video format support depends on your TV.</string>
+    <string name="cast_image_failed">Could not prepare this photo for the TV.</string>
+    <string name="casting_to">Casting to %1$s</string>
+    <string name="cast_choose_media">Open a photo or video to show it on the TV</string>
+    <string name="cast_pause">Pause on TV</string>
+    <string name="cast_play">Play on TV</string>
+    <string name="cast_stop">Stop casting</string>
 </resources>

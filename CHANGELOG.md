@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-11-13
+
+- Add Google Cast device selection in the gallery and viewer.
+- Cast the current photo/video and follow viewer swipes; add remote play/pause, seek, and stop controls.
+- Prepare TV-sized JPEG photos and relay video byte ranges through the phone without sharing kDrive credentials or creating public links.
+- Revoke local media URLs when changing items or stopping casting, and stop the session on sign-out.
+- Explain the Google Play services requirement on unsupported phones while keeping the gallery usable.
+
+
 ## 0.6.0 — 2026-11-12
 
 - Add Favorites, Archive, and virtual albums with persistent offline storage.

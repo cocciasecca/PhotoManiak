@@ -145,6 +145,17 @@ class ViewerSettingsTest {
         compose.waitUntil(5000) { !model.state.value.busy && model.state.value.collections.albums.isEmpty() }
     }
 
+    @Test fun castWithoutGooglePlayServicesExplainsRequirementWithoutBreakingViewer() {
+        if(com.google.android.gms.common.GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)==com.google.android.gms.common.ConnectionResult.SUCCESS) return
+        val asset=library().assets.first()
+        compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { Viewer(listOf(asset),0,model) {} } }
+        compose.onNodeWithContentDescription("Cast").performClick()
+        compose.onNodeWithText("Google Cast requires Google Play services on this phone. The rest of PhotoManiak works without them.").assertIsDisplayed()
+        compose.onNodeWithText("Close").performClick()
+        compose.onNodeWithText("Share").assertIsDisplayed()
+        compose.onNodeWithText("Info").assertIsDisplayed()
+    }
+
     @Test fun appearanceFollowsSystemUnlessExplicitlyOverridden() {
         val night=mutableStateOf(false)
         var background=Color.Unspecified

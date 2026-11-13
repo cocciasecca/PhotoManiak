@@ -24,6 +24,7 @@ data class GalleryState(
 )
 @OptIn(coil.annotation.ExperimentalCoilApi::class)
 class GalleryModel(app: Application): AndroidViewModel(app) {
+    internal val casting = CastController(app,viewModelScope)
     private val settings = Settings(app)
     private val db = AssetDb(app)
     private val collectionDb = CollectionDb(app)
@@ -235,6 +236,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
     fun logout() {
         if(state.value.scanning || state.value.busy || state.value.syncing) return
         syncDelay?.cancel()
+        casting.stop()
         operation {
             driveClient?.http?.dispatcher?.cancelAll()
             images?.memoryCache?.clear(); images?.diskCache?.clear(); images?.shutdown(); images=null
@@ -254,5 +256,5 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
             finally { mutable.update { it.copy(busy=false) } }
         }
     }
-    override fun onCleared() { driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close(); collectionDb.close() }
+    override fun onCleared() { casting.close(); driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close(); collectionDb.close() }
 }

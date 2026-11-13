@@ -1,5 +1,19 @@
 # Verification
 
+## Version 0.7.0 — November 13, 2026
+
+- APK build, Android Lint, and all 61 JVM tests passed.
+- 23 Android 15 device tests passed, including the no-Google-Play-services Cast explanation and existing gallery/collection regressions. The Google-dependent picker test was skipped on that emulator.
+- The official Cast framework initialized successfully and opened its native device chooser in a separate Android 37 emulator with Google Play services. This additional integration test passed, and the chooser screenshot was inspected.
+- Relay tests cover GET/HEAD/OPTIONS, byte ranges, malformed requests, unsupported methods, exact resource matching, URL rotation/revocation, listener shutdown, upstream failures, and keeping kDrive bearer credentials out of receiver URLs/headers/bodies.
+- The initial picker test harness used an Espresso API incompatible with the newer emulator. The final test uses native ActivityScenario and passed there; application code was unchanged by that harness adjustment.
+- No real Chromecast/TV playback, codec compatibility, discovery on a physical Wi-Fi network, or live kDrive streaming was tested. These require a receiver and the user's account. Keep the app open while casting.
+- The application ID and signing certificate match earlier releases for in-place updates.
+
+APK: `PhotoManiak-0.7.0-debug.apk`.
+
+SHA-256: `34f594525d986da904494697246947ef19d0ff81de03e1ff769ab14e8b7b5adc`.
+
 ## Version 0.6.0 — November 12, 2026
 
 - APK build, Android Lint, 52 JVM tests, and 22 Android 15 device tests passed.

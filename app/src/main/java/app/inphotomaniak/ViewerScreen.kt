@@ -46,6 +46,10 @@ import kotlinx.coroutines.launch
     var details by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]
     val state by model.state.collectAsStateWithLifecycle()
+    val casting by model.casting.state.collectAsStateWithLifecycle()
+    LaunchedEffect(casting.connected,asset.entry.path) {
+        if(casting.connected) model.driveClient?.let { client -> model.images?.let { model.casting.show(asset.entry,client,it) } }
+    }
     var confirmDelete by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -54,12 +58,12 @@ import kotlinx.coroutines.launch
     BackHandler { onClose() }
     if(confirmDelete) DeleteConfirmation(1,onDismiss={confirmDelete=false}) {
         confirmDelete=false
-        model.deleteAssets(setOf(asset.entry.path)) { deleted -> if(asset.entry.path in deleted) onClose() }
+        model.deleteAssets(setOf(asset.entry.path)) { deleted -> if(asset.entry.path in deleted) { if(casting.connected) model.casting.stop();onClose() } }
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=128.dp),key={assets[it].entry.path}) { index ->
+        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize().safeDrawingPadding().padding(bottom=if(casting.connected) 240.dp else 128.dp),key={assets[it].entry.path}) { index ->
             val item=assets[index]
-            if(item.entry.video) { if(index==pager.currentPage) VideoPlayer(item,model) }
+            if(item.entry.video) { if(index==pager.currentPage && !casting.connected) VideoPlayer(item,model) else if(casting.connected) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) { Icon(Icons.Outlined.CastConnected,stringResource(R.string.cast),Modifier.size(64.dp)) } }
             else {
                 var zoom by remember(item.entry.path) { mutableFloatStateOf(1f) }
                 var x by remember(item.entry.path) { mutableFloatStateOf(0f) };var y by remember(item.entry.path) { mutableFloatStateOf(0f) }
@@ -76,9 +80,11 @@ import kotlinx.coroutines.launch
             Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.back_to_timeline),tint=Color.White)
         }
         Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding().fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
+            CastControls(model.casting)
             state.error?.let { ErrorCard(it,model::clearError) }
             shareError?.let { ErrorCard(it) { shareError=null } }
             Row(horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+                CastButton(model.casting)
                 val favorite=asset.entry.collectionId() in state.collections.favorites
                 val archived=asset.entry.collectionId() in state.collections.archived
                 IconToggleButton(checked=favorite,enabled=!state.busy && !sharing,onCheckedChange={model.favorite(listOf(asset),it)}) {
