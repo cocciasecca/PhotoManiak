@@ -28,9 +28,8 @@ jobs:
           SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_B64 }}
         run: |
           test -n "$SIGNING_KEY"
-          mkdir -p "$HOME/.android"
-          printf '%s' "$SIGNING_KEY" | base64 --decode > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/distribution.keystore"
+          chmod 600 "$RUNNER_TEMP/distribution.keystore"
           python3 - <<'PY'
           import os, re
           from pathlib import Path
@@ -44,10 +43,12 @@ jobs:
         run: |
           ./gradlew :app:fossDependencyReport
           python3 scripts/check-foss-apk.py app/build/outputs/apk/FOSS/debug/app-FOSS-debug.apk
-      - name: Verify distribution signature
+      - name: Sign and verify distribution APK
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "app/build/outputs/apk/${{ matrix.edition }}/debug/app-${{ matrix.edition }}-debug.apk" > "$RUNNER_TEMP/signature.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$RUNNER_TEMP/distribution.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out "$RUNNER_TEMP/signed.apk" "app/build/outputs/apk/${{ matrix.edition }}/debug/app-${{ matrix.edition }}-debug.apk"
+          mv "$RUNNER_TEMP/signed.apk" "app/build/outputs/apk/${{ matrix.edition }}/debug/app-${{ matrix.edition }}-debug.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "app/build/outputs/apk/${{ matrix.edition }}/debug/app-${{ matrix.edition }}-debug.apk" | tee "$RUNNER_TEMP/signature.txt"
           grep -F 'Signer #1 certificate SHA-256 digest: 278b22e68c22fdc237c14e0c9a3013f53bfbda00b79e3119c9887ac6e39ef170' "$RUNNER_TEMP/signature.txt"
       - uses: actions/upload-artifact@v4
         with:
@@ -55,7 +56,7 @@ jobs:
           path: app/build/outputs/apk/${{ matrix.edition }}/debug/*.apk
       - name: Remove restored signing key
         if: always() && startsWith(github.ref, 'refs/tags/v')
-        run: rm -f "$HOME/.android/debug.keystore"
+        run: rm -f "$RUNNER_TEMP/distribution.keystore"
   release:
     if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
     needs: verify
