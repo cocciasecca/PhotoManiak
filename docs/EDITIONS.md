@@ -13,6 +13,10 @@ Both editions use `app.inphotomaniak`, version code 9 for 0.7.2, and the existin
 
 Stop an active Cast session before switching to FOSS. The installed edition is shown in Settings. Release APKs remain debug-signed development builds; a locally built APK with a different key cannot replace a published APK in place.
 
+## Release assets
+
+Publish only the FOSS and with-Cast APKs in future releases. Do not attach a separate SHA256SUMS file; GitHub provides a SHA-256 digest for each release asset. The existing 0.7.2 checksum attachment is historical.
+
 ## Source layout
 
 - `src/main`: shared gallery and data code, resources, and inactive Cast state model.
