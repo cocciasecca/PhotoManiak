@@ -1,85 +1,68 @@
-# PhotoManiak — Android
+# PhotoManiak
 
-A native Kotlin/Jetpack Compose gallery for photos and videos already stored on Infomaniak kDrive. Browse selected folders in a capture-date timeline, share originals, and move selected media to the kDrive trash after confirmation.
+A native Android gallery for photos and videos stored on Infomaniak kDrive. Browse selected folders in a timeline ordered by capture date, without moving or reorganizing your files.
 
-## Install and connect
+**[Download](https://github.com/cocciasecca/PhotoManiak/releases)** · Android 8.0+ · English interface
 
-1. Download the APK from [Releases](https://github.com/cocciasecca/PhotoManiak/releases), or build it yourself. Android 8.0 (API 26) or later is required. Release APKs are development builds signed with a debug key.
-2. Create a personal API token in [Infomaniak Manager](https://manager.infomaniak.com/v3/ng/accounts/token/list) with the **drive** scope. `user_info` is not required.
-3. Enter the token and your numeric kDrive ID in the app. Find the ID in the kDrive web address after `/drive/`.
-4. Open **Folders** and include the folders you want to browse. All nested levels are included; individual subfolders can be excluded.
-5. Tap **Show my library**. The timeline appears after file discovery, then dates are refined as metadata is read. A clock marks a provisional date.
+## FOSS and non-FOSS editions
 
-Each user connects their own account. Never put tokens in source code, GitHub issues, or logs. Upgrading from the original WebDAV version (0.1.0) requires connecting again with a token and selecting folders again.
+Starting with the **next release after 0.7.1**, PhotoManiak will offer two APKs from the same project:
+
+| | PhotoManiak FOSS | PhotoManiak with Cast (non-FOSS) |
+|---|---|---|
+| Gallery, folders, sharing, Favorites, Archive, albums, and appearance settings | Yes | Yes |
+| Google Cast | No | Yes |
+| Proprietary Google libraries included in the APK | No | Yes — Google Cast SDK |
+| Google Play services needed | No | Only for Cast |
+
+**The current 0.7.1 APK is the non-FOSS edition with Cast. A FOSS APK is not available yet.** The split and an explicit open-source license for the project are planned for the next release. Publishing the source on GitHub alone does not make it FOSS. F-Droid availability is not yet promised.
+
+## Connect your kDrive
+
+1. Install the APK from [Releases](https://github.com/cocciasecca/PhotoManiak/releases).
+2. Create a personal API token in [Infomaniak Manager](https://manager.infomaniak.com/v3/ng/accounts/token/list) with the **drive** scope.
+3. Enter the token and your kDrive ID, found in the kDrive web address after `/drive/`.
+4. Open **Folders**, select the folders to include, and tap **Show my library**. Subfolders are included automatically; you can exclude individual subfolders.
+
+### Where are my folders?
+
+The folder picker may show **Private** and **Common documents** at the top level:
+
+- **Private** is your personal space. Start here to find the folders you normally browse or upload to in your personal kDrive space on the website.
+- **Common documents** is the shared space. Files uploaded through the browser into that shared space will be here instead.
+
+You can include multiple folders from the spaces your account can access. Each user connects their own account; never share your API token.
 
 ## Features
 
-- One active account and drive at a time, configured in the app.
-- Recursive, paginated browsing with folder inclusion and exclusion.
-- Timeline ordered by capture date; photo zoom, swipe navigation, and video playback.
-- **Settings → Appearance:** System (default), Light, or Dark. System tracks Android’s current theme; your choice is saved between launches.
-- **Settings → Color scheme:** Green, Blue, Purple, Orange, Wallpaper (Android 12+), or Custom. Custom colors support a hue slider and hex input; readable light/dark shades are generated and the choice is saved locally.
-- One adaptive launcher icon with separate foreground/background layers and an Android 13+ monochrome layer for themed icons. Enable themed icons in a compatible launcher; the launcher controls colors, masks, and motion effects.
-- **Settings → Thumbnail size:** Small, Medium, or Large. The preference survives app restarts; the grid adapts to screen width.
-- A minimal viewer with a back arrow at the top, Favorite and an overflow menu (Cast, Add to album, Archive) at the top right, and **Share**, **Delete**, and **Info** at the bottom, without a toolbar or photo counter.
-- **Info:** a scrollable bottom sheet with date source, file path, and available EXIF GPS coordinates, camera, and dimensions. Coordinates are selectable; no geocoding service is contacted. Opening Info reads bounded metadata from kDrive; missing GPS and read failures are shown explicitly.
-- Share the original file using Android's share sheet. The app first downloads a temporary private copy, which may take time for large files. It grants read access to the receiving app without exposing the API token.
-- English interface, including date labels, progress messages, and errors generated by the app.
-- **Google Cast:** show the current photo or video on Chromecast/Google Cast TVs on the same Wi-Fi network. Connect using the Cast button, then open or swipe through media. Video controls include play/pause, seeking, and stop. Keep PhotoManiak open during casting. The Cast feature requires Google Play services; the gallery remains usable without them. See [Cast setup and limitations](docs/CAST.md).
-- **Collections:** Favorites, Archive, and virtual albums. Albums support creating, renaming, adding/removing items, and deleting the album without deleting media. A photo can belong to multiple albums.
-- Archive hides media from the main timeline; it remains available in Archive, Favorites, and albums. Collections only display media from the folders currently included in the library.
-- Collection changes are stored locally in SQLite and work offline. Optional JSON synchronization on kDrive is configured in **Settings → Collection sync → Choose location**. Select the same parent folder on each device; the app creates or reuses its `PhotoManiak` subfolder.
-- Local SQLite index and a private image cache of up to 256 MB.
-- Encrypted credentials using Android Keystore; sign-out clears credentials and local data.
-- Return from the viewer to the previous timeline scroll position, including after screen recreation.
-- Select multiple items using the selection icon or a long press, then share or delete the selection.
-- **Delete** moves original photos/videos to the kDrive trash after confirmation. It does not permanently erase files or empty the trash. Account and token permissions must allow deletion; recovery is available through kDrive while files remain in its trash.
-- Browsing uses GET/HEAD. A separate client permits only the specific trash operation. No photo/video uploads, original-file renaming, folder deletion, or permanent deletion. Optional collection sync only creates its metadata folder and new JSON change files; it never overwrites existing cloud files.
+- Capture-date timeline using photo/video metadata, with filename and file-date fallbacks.
+- Photo zoom, swipe navigation, video playback, and original-file sharing.
+- Favorites, Archive, and virtual albums, with optional [collection synchronization through kDrive](docs/COLLECTIONS.md).
+- Small, Medium, or Large thumbnails; System, Light, or Dark appearance; preset, wallpaper, or custom colors.
+- A scrollable **Info** panel with date source, file path, and available GPS coordinates, camera, and dimensions.
+- Multiple selection for sharing or deletion. **Delete moves originals to the kDrive trash after confirmation**, affecting the files on kDrive too.
+- [Google Cast](docs/CAST.md) in the non-FOSS edition: show photos and videos on a compatible TV on the same Wi-Fi network. Keep the app open while casting.
 
-## Selection and deletion
+PhotoManiak does not upload photos or videos. Virtual albums do not move originals. Optional collection sync only writes its own metadata folder and JSON files.
 
-Tap the selection icon in the timeline, then tap the desired thumbnails, or long-press a thumbnail to begin selecting. **Share** downloads the selected originals and opens Android's share sheet. Mixed photo/video selections use a compatible generic MIME type.
+## Before you start
 
-**Delete → Move to trash** affects the original files on kDrive, including their availability on other devices. It is disabled while indexing or another account operation is running. The app removes each item from its local index only after the API confirms success. If a batch fails, processing stops, confirmed items remain removed, and the remaining items stay selected with an error message. Refresh before retrying an operation with an uncertain network result.
+The first scan can take time and use mobile data while reading capture metadata. Sharing downloads the full original. Supported formats depend on kDrive thumbnails and your device's codecs; account access depends on your plan and permissions.
 
-## Dates and network usage
+Release APKs are currently development builds signed with a debug key. Credentials are encrypted on the device; signing out clears local account data and settings.
 
-Capture dates use supported EXIF/XMP tags with Immich-inspired priorities, plus Android video metadata. Fallbacks are an unambiguous date in the filename, then the remote modification time. Download time is never used. **Info** shows the date source and file path. This is not a complete ExifTool replacement: sidecars and all proprietary tags are not supported.
+## Build
 
-The first scan reads metadata over the network (up to 16 MB per image and 24 MB per video analysis). Later scans reuse metadata for unchanged files. API requests are paced; if kDrive returns HTTP 429, wait before refreshing. Sharing downloads the entire original separately from these metadata limits.
-
-Thumbnails depend on formats supported by kDrive; video playback depends on the device's codecs. Scanning stops if Android terminates the process; a later refresh reuses saved metadata. There is no permanent background service.
-
-Shared copies use a separate temporary cache, outside the 256 MB image-cache limit. Copies older than 24 hours are removed when preparing another share, and all shared copies are removed on sign-out. Android may also reclaim cached files.
-
-## Build and test
-
-Requires JDK 17, Android SDK Platform 35, and Build Tools 35.0.0. Set `ANDROID_HOME`, or add `sdk.dir` to the Git-ignored `local.properties` file.
+Requires JDK 17, Android SDK Platform 35, and Build Tools 35.0.0. Set `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 
 ```sh
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. For device tests, connect an emulator or Android device and run:
+Current APK output: `app/build/outputs/apk/debug/app-debug.apk` (includes Cast). Run `./gradlew :app:connectedDebugAndroidTest` with a connected device or emulator for device tests.
 
-```sh
-./gradlew :app:connectedDebugAndroidTest
-```
+## More details
 
-[GitHub Actions](https://github.com/cocciasecca/PhotoManiak/actions) runs JVM tests, lint, and compilation, then uploads the debug APK as an artifact. The local `dist/` directory is not tracked. Debug APKs built on different machines may have different signatures; stable distribution will need a dedicated signing key kept outside the repository.
+[Changelog](CHANGELOG.md) · [Collection sync](docs/COLLECTIONS.md) · [Cast](docs/CAST.md) · [Project notes](docs/PROJECT.md) · [Verification](docs/VERIFICATION.md)
 
-## Compatibility
-
-Account access was confirmed by the user with version 0.2.0. Automated API tests use a mock server. Formats, streaming, and performance on large collections still require testing with real libraries. API and folder availability depend on account permissions and token scopes; support for every Infomaniak plan is not claimed. This is a development app, not a Google Play release.
-
-See [Collection sync details](docs/COLLECTIONS.md), [Changelog](CHANGELOG.md), [Project notes](docs/PROJECT.md), and [Verification](docs/VERIFICATION.md).
-
-## Technical references
-
-- [Infomaniak API and tokens](https://developer.infomaniak.com/getting-started).
-- [Official Android client routes](https://github.com/Infomaniak/android-kDrive/blob/master/app/src/main/java/com/infomaniak/drive/data/api/ApiRoutes.kt), consulted for endpoints and pagination; no code copied.
-- [kPhotos](https://github.com/mateocarciu/kPhotos), a reference for token access and thumbnails; no code copied.
-- [Immich metadata service](https://github.com/immich-app/immich/blob/main/server/src/services/metadata.service.ts), a reference for date priorities.
-- [Android sharing](https://developer.android.com/training/sharing/send).
-
-Independent app, not affiliated with Infomaniak.
+Independent app, not affiliated with Infomaniak. Inspired by [kPhotos](https://github.com/mateocarciu/kPhotos) and [Immich](https://github.com/immich-app/immich).
