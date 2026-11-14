@@ -1,0 +1,1 @@
+<resources><style name="CastButtonDark" parent="Theme.AppCompat"><item name="colorControlNormal">#FFFFFF</item><item name="colorAccent">#C4D9AA</item></style><style name="CastButtonLight" parent="Theme.AppCompat.Light"><item name="colorControlNormal">#49643B</item><item name="colorAccent">#49643B</item></style></resources>

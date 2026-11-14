@@ -1,5 +1,22 @@
 # Verification
 
+## Version 0.7.2 — November 14, 2026
+
+- Both FOSS and with-Cast APKs compiled successfully and passed Android Lint.
+- JVM tests: 52 passed for FOSS; 61 passed for with-Cast (including the Cast relay suite).
+- Android 15 tests: 28 passed for FOSS; 28 passed for with-Cast, with the Google-dependent native-picker test skipped on the AOSP emulator.
+- The with-Cast native-picker integration test also passed separately on an emulator with Google Play services, confirming SDK initialization and the options-provider manifest after the split. Physical receiver playback was not tested.
+- The FOSS device test verifies absent Google SDK/relay classes, no Cast action in the gallery/viewer, and available sharing, Info, Favorites, album, and archive actions.
+- Reviewed the Maven POM licenses (including inherited licenses) of all 101 resolved FOSS debug runtime artifacts: all declare Apache 2.0. Project code is MIT licensed; licenses and upstream notices are bundled in the APKs.
+- The final FOSS APK passed the defined-DEX-class/manifest scan for proprietary Google SDK namespaces. The with-Cast APK was correctly rejected as a negative control. Manifest checks confirm Cast discovery permissions/options exist only in with-Cast.
+- Installed 0.7.1, seeded fixture data, updated in place to 0.7.2 FOSS, switched to with-Cast, and switched back to FOSS. At each step the encrypted fixture account, included/excluded folders, index, thumbnail size, theme, and custom color were retained. No real account was used.
+- Both APKs retain application ID `app.inphotomaniak`, version code 9, and the previous signing certificate. They replace one another; they cannot coexist on the same Android profile.
+
+| APK | SHA-256 |
+|---|---|
+| `PhotoManiak-0.7.2-foss.apk` | `9998c66dc3408b1a043acffded719773cb56f84b60ccedeafb0335df02bea83e` |
+| `PhotoManiak-0.7.2-withCast.apk` | `43bfd54d31b459215dbc0cccc062d0559b2b72c01be954d9078676276d85fd9c` |
+
 ## Version 0.7.1 — November 14, 2026
 
 - APK build, Android Lint, and all 61 JVM tests passed.

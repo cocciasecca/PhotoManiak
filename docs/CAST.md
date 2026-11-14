@@ -1,9 +1,11 @@
 # Google Cast
 
+Available only in the **with-Cast (non-FOSS)** edition. The FOSS APK excludes the Google SDK and all Cast actions.
+
 ## Use
 
 1. Connect the phone and a Chromecast/Google Cast TV or display to the same Wi-Fi network. Guest/client-isolated networks and VPNs may prevent the TV from reaching the phone.
-2. Tap **Cast** in the main screen or photo viewer and select the TV.
+2. Tap **Cast** in the main screen or **More options → Cast** in the photo viewer and select the TV.
 3. Open a photo or video. Swiping through the viewer sends the current item to the connected TV. Video playback on the phone stops while connected to Cast.
 4. Use the Cast controls to pause/play, seek in supported videos, or **Stop casting**. The controls remain available when returning to the gallery.
 

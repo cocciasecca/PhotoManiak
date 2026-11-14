@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2 — 2026-11-14
+
+- Publish FOSS and with-Cast APKs from separate build flavors, with the same application ID/signature for in-place updates and edition switching.
+- Exclude Google Cast SDKs, Cast relay/implementation, discovery permissions, and Cast UI from the FOSS edition.
+- Keep existing gallery features unchanged and show the installed edition in Settings.
+- Add the MIT license for project code, dependency documentation, and CI checks for both editions.
+- Separate Cast-only source, resources, manifest entries, and tests as build cleanup.
+
 ## 0.7.1 — 2026-11-14
 
 - Add persistent color schemes: Green, Blue, Purple, Orange, Wallpaper, and Custom.

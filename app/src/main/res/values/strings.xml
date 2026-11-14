@@ -51,7 +51,7 @@
     <string name="memory_count">%1$d items</string>
     <string name="connected_drive">kDrive %1$s</string>
     <string name="folder_count">%1$d included folders · %2$d excluded</string>
-    <string name="app_about">PhotoManiak · %1$s\nIndependent app, not affiliated with Infomaniak.</string>
+    <string name="app_about">PhotoManiak · %1$s · %2$s\nIndependent app, not affiliated with Infomaniak.</string>
     <string name="share">Share</string>
     <string name="share_failed">Could not share this file. Please try again.</string>
     <string name="video_failed">Cannot play this video. Check your connection or the file format.</string>

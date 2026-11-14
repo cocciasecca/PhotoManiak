@@ -6,7 +6,7 @@ A native Android gallery for photos and videos stored on Infomaniak kDrive. Brow
 
 ## FOSS and non-FOSS editions
 
-Starting with the **next release after 0.7.1**, PhotoManiak will offer two APKs from the same project:
+Starting with **0.7.2**, each release offers two APKs from the same project:
 
 | | PhotoManiak FOSS | PhotoManiak with Cast (non-FOSS) |
 |---|---|---|
@@ -15,7 +15,9 @@ Starting with the **next release after 0.7.1**, PhotoManiak will offer two APKs 
 | Proprietary Google libraries included in the APK | No | Yes — Google Cast SDK |
 | Google Play services needed | No | Only for Cast |
 
-**The current 0.7.1 APK is the non-FOSS edition with Cast. A FOSS APK is not available yet.** The split and an explicit open-source license for the project are planned for the next release. Publishing the source on GitHub alone does not make it FOSS. F-Droid availability is not yet promised.
+Download `PhotoManiak-<version>-foss.apk` for the FOSS edition or `PhotoManiak-<version>-withCast.apk` for Google Cast support. Both use the same app ID and signing certificate: install either over your existing version to keep your account and preferences, or switch editions at the same/newer version. They cannot be installed side by side. Settings shows the installed edition.
+
+PhotoManiak's own code is [MIT licensed](LICENSE); dependencies retain their own licenses. The with-Cast APK contains proprietary Google SDKs and is not fully FOSS. Version 0.7.1 and earlier Cast releases only provided that edition. F-Droid availability is not yet promised.
 
 ## Connect your kDrive
 
@@ -56,10 +58,11 @@ Release APKs are currently development builds signed with a debug key. Credentia
 Requires JDK 17, Android SDK Platform 35, and Build Tools 35.0.0. Set `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 
 ```sh
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :app:testFossDebugUnitTest :app:lintFossDebug :app:assembleFossDebug
+./gradlew :app:testWithCastDebugUnitTest :app:lintWithCastDebug :app:assembleWithCastDebug
 ```
 
-Current APK output: `app/build/outputs/apk/debug/app-debug.apk` (includes Cast). Run `./gradlew :app:connectedDebugAndroidTest` with a connected device or emulator for device tests.
+APKs are written to `app/build/outputs/apk/foss/debug/` and `app/build/outputs/apk/withCast/debug/`. Device-test tasks are `:app:connectedFossDebugAndroidTest` and `:app:connectedWithCastDebugAndroidTest`; run them separately because both editions share an app ID. See [editions and dependency checks](docs/EDITIONS.md).
 
 ## More details
 

@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
         Text(stringResource(R.string.folder_count,s.rules.included.size,s.rules.excluded.size))
         Text(stringResource(R.string.cache_description))
         Text(stringResource(R.string.metadata_description),style=MaterialTheme.typography.bodyMedium)
-        Text(stringResource(R.string.app_about,BuildConfig.VERSION_NAME),style=MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.app_about,BuildConfig.VERSION_NAME,stringResource(R.string.edition_name)),style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning && !s.syncing) { Text(stringResource(R.string.sign_out_clear)) }
     }
     if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.sign_out_title))},text={Text(stringResource(if(s.pendingEdits>0) R.string.sign_out_unsynced else R.string.sign_out_description))},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text(stringResource(R.string.sign_out)) }},dismissButton={TextButton(onClick={confirm=false}) { Text(stringResource(R.string.cancel)) }})
