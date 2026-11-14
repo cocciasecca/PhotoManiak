@@ -1,5 +1,16 @@
 # Verification
 
+## Version 0.8.0 — November 14, 2026
+
+- Both editions compiled and passed Android Lint. JVM tests: 54 FOSS / 63 nonFOSS passed, including sequential wrapping and random-next bounds/no immediate repeats.
+- Android 15 suites: 31 tests passed for FOSS; 31 passed for nonFOSS, with the Google-dependent picker test skipped on the AOSP emulator.
+- Presentation tests cover the viewer entry/setup, skipping videos, timed advance, pause on backgrounding, explicit resume, random order, next photo, and exit. Images are fixture entries rather than a live kDrive library; physical Cast playback was not tested.
+- Update tests started with the published 0.7.2 FOSS APK, then installed 0.8.0 FOSS, nonFOSS, and FOSS again. Encrypted fixture account, selected folders, index, and appearance settings were retained.
+- The FOSS APK passed the proprietary SDK class/manifest check. Runtime dependencies are unchanged from the 0.7.2 license inventory.
+- Version-tag publishing now runs in GitHub Actions. It requires both editions to pass unit tests/lint/build, checks the FOSS APK, and verifies the restored signing certificate before creating the release. APK bytes/digests are those produced by Actions, not the local test build.
+
+Release: [0.8.0](https://github.com/cocciasecca/PhotoManiak/releases/tag/v0.8.0). Asset names are `PhotoManiak-0.8.0-FOSS.apk` and `PhotoManiak-0.8.0-nonFOSS.apk`; GitHub supplies their SHA-256 digests.
+
 ## Version 0.7.2 — November 14, 2026
 
 - Both FOSS and with-Cast APKs compiled successfully and passed Android Lint.

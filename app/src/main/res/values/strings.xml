@@ -150,4 +150,14 @@
     <string name="metadata_failed">Could not read additional metadata. Try reopening Info.</string>
     <string name="photo_camera">Camera</string>
     <string name="photo_dimensions">Dimensions</string>
+    <string name="slideshow">Slideshow</string>
+    <string name="slideshow_help">Show photos from the current timeline or album. Videos are skipped.</string>
+    <string name="slide_interval">%1$d seconds per photo</string>
+    <string name="start_slideshow">Start slideshow</string>
+    <string name="exit_slideshow">Exit slideshow</string>
+    <string name="random_photos">Random photos</string>
+    <string name="pause_slideshow">Pause slideshow</string>
+    <string name="resume_slideshow">Resume slideshow</string>
+    <string name="next_photo">Next photo</string>
+    <string name="slideshow_options">Slideshow options</string>
 </resources>

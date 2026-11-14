@@ -8,10 +8,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - edition: foss
-            variant: Foss
-          - edition: withCast
-            variant: WithCast
+          - edition: FOSS
+            variant: FOSS
+          - edition: nonFOSS
+            variant: NonFOSS
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -22,13 +22,58 @@ jobs:
         with:
           packages: platform-tools
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Restore distribution signing key
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_B64 }}
+        run: |
+          test -n "$SIGNING_KEY"
+          mkdir -p "$HOME/.android"
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = re.search(r'versionName = "([^"]+)"', Path('app/build.gradle.kts').read_text()).group(1)
+          assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Tag and app version must match'
+          assert Path('docs/releases/' + version + '.md').is_file(), 'Release notes missing'
+          PY
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :app:test${{ matrix.variant }}DebugUnitTest :app:lint${{ matrix.variant }}Debug :app:assemble${{ matrix.variant }}Debug
-      - if: matrix.edition == 'foss'
+      - if: matrix.edition == 'FOSS'
         run: |
           ./gradlew :app:fossDependencyReport
-          python3 scripts/check-foss-apk.py app/build/outputs/apk/foss/debug/app-foss-debug.apk
+          python3 scripts/check-foss-apk.py app/build/outputs/apk/FOSS/debug/app-FOSS-debug.apk
+      - name: Verify distribution signature
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "app/build/outputs/apk/${{ matrix.edition }}/debug/app-${{ matrix.edition }}-debug.apk" > "$RUNNER_TEMP/signature.txt"
+          grep -F 'Signer #1 certificate SHA-256 digest: 278b22e68c22fdc237c14e0c9a3013f53bfbda00b79e3119c9887ac6e39ef170' "$RUNNER_TEMP/signature.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: PhotoManiak-${{ matrix.edition }}
           path: app/build/outputs/apk/${{ matrix.edition }}/debug/*.apk
+      - name: Remove restored signing key
+        if: always() && startsWith(github.ref, 'refs/tags/v')
+        run: rm -f "$HOME/.android/debug.keystore"
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: PhotoManiak-*
+          path: artifacts
+      - name: Publish release APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir release
+          cp artifacts/PhotoManiak-FOSS/app-FOSS-debug.apk "release/PhotoManiak-$version-FOSS.apk"
+          cp artifacts/PhotoManiak-nonFOSS/app-nonFOSS-debug.apk "release/PhotoManiak-$version-nonFOSS.apk"
+          gh release create "$GITHUB_REF_NAME" release/*.apk --verify-tag --title "PhotoManiak $version" --notes-file "docs/releases/$version.md"

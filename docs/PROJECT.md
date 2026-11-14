@@ -18,7 +18,7 @@ A native Android gallery for existing Infomaniak kDrive photos and videos. Each 
 
 ## Implementation
 
-Since 0.7.2, `foss` and `withCast` build flavors share the same app ID and all gallery code. Cast implementation, relay, SDK dependency, permissions, and tests live only in the with-Cast source sets; FOSS provides inactive UI/controller adapters. See [editions](EDITIONS.md). Project code is MIT licensed.
+Since 0.7.2, `FOSS` and `nonFOSS` build flavors share the same app ID and all gallery code. Cast implementation, relay, SDK dependency, permissions, and tests live only in the nonFOSS source sets; FOSS provides inactive UI/controller adapters. See [editions](EDITIONS.md). Project code is MIT licensed.
 
 Kotlin, Jetpack Compose, SQLite, Coil, OkHttp, Android ExifInterface, and Media3. REST API access uses a personal token with the `drive` scope and a user-provided drive ID. Browsing permits only GET and HEAD. A separate client permits DELETE only on `/2/drive/{drive_id}/files/{file_id}` for individual media files, with redirects and connection retries disabled. The `/trash` permanent-deletion endpoints are not used. Bearer credentials are sent only to the configured API origin and stripped on download redirects to allowed content hosts.
 

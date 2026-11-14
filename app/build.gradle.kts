@@ -10,19 +10,19 @@ android {
         applicationId = "app.inphotomaniak"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.7.2"
+        versionCode = 10
+        versionName = "0.8.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     flavorDimensions += "edition"
     productFlavors {
-        create("foss") {
+        create("FOSS") {
             dimension = "edition"
             resValue("string", "edition_name", "FOSS")
         }
-        create("withCast") {
+        create("nonFOSS") {
             dimension = "edition"
-            resValue("string", "edition_name", "With Cast (non-FOSS)")
+            resValue("string", "edition_name", "nonFOSS")
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -35,7 +35,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    "withCastImplementation"("com.google.android.gms:play-services-cast-framework:22.3.1")
+    "nonFOSSImplementation"("com.google.android.gms:play-services-cast-framework:22.3.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.fragment:fragment-ktx:1.8.6")
     implementation("androidx.activity:activity-compose:1.10.1")
@@ -74,7 +74,7 @@ configurations.configureEach {
 tasks.register("fossDependencyReport") {
     description = "List the resolved libraries packaged in the FOSS debug APK."
     doLast {
-        configurations.getByName("fossDebugRuntimeClasspath").resolvedConfiguration.resolvedArtifacts
+        configurations.getByName("FOSSDebugRuntimeClasspath").resolvedConfiguration.resolvedArtifacts
             .map { it.moduleVersion.id.toString() }.distinct().sorted().forEach { println(it) }
     }
 }

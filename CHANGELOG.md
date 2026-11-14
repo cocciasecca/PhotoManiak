@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-11-14
+
+- Add photo slideshows from the current timeline or album, with 3/5/10/30-second intervals, pause/resume, next photo, random order, and exit controls. Skip videos and wait for photo loading before advancing.
+- Keep the screen awake during a slideshow; pause when the app leaves the foreground. Exiting returns to the displayed photo. An existing Cast connection follows the slideshow in nonFOSS.
+- Standardize current edition names and APK filenames as FOSS and nonFOSS.
+- Build and publish version-tag releases through GitHub Actions using the existing signing certificate; attach only the two APKs.
+
 ## 0.7.2 — 2026-11-14
 
 - Publish FOSS and with-Cast APKs from separate build flavors, with the same application ID/signature for in-place updates and edition switching.

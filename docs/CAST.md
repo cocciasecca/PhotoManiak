@@ -1,6 +1,6 @@
 # Google Cast
 
-Available only in the **with-Cast (non-FOSS)** edition. The FOSS APK excludes the Google SDK and all Cast actions.
+Available only in the **nonFOSS** edition. The FOSS APK excludes the Google SDK and all Cast actions.
 
 ## Use
 

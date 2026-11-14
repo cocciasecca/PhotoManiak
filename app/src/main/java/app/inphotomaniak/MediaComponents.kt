@@ -23,16 +23,17 @@ import java.util.Locale
     val unknownDate = stringResource(R.string.unknown_date)
     return runCatching { LocalDate.parse(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy",Locale.ENGLISH)) }.getOrDefault(unknownDate)
 }
-@Composable internal fun Photo(asset: Asset,model: GalleryModel,modifier: Modifier,scale: ContentScale) {
+@Composable internal fun Photo(asset: Asset,model: GalleryModel,modifier: Modifier,scale: ContentScale,onSettled: (() -> Unit)? = null) {
     val context=LocalContext.current
     var failed by remember(asset.entry.path) { mutableStateOf(false) }
-    val loader=model.images ?: return
+    val loader=model.images
+    if(loader==null) { LaunchedEffect(Unit) { onSettled?.invoke() };return }
     val thumbnail = scale == ContentScale.Crop
     val imageUrl = if(thumbnail) model.driveClient!!.thumbnail(asset.entry.path) else model.driveClient!!.url(asset.entry.path)
     val cacheKey = "${model.driveClient!!.account.driveId}:${asset.entry.path}:${asset.entry.etag}:${asset.entry.modified}:$thumbnail"
     Box(modifier,contentAlignment=Alignment.Center) {
         Icon(Icons.Outlined.Image,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
-        AsyncImage(model=ImageRequest.Builder(context).data(imageUrl.toString()).memoryCacheKey(cacheKey).diskCacheKey(cacheKey).crossfade(true).build(),imageLoader=loader,contentDescription=asset.entry.name,modifier=Modifier.fillMaxSize(),contentScale=scale,onError={failed=true})
+        AsyncImage(model=ImageRequest.Builder(context).data(imageUrl.toString()).memoryCacheKey(cacheKey).diskCacheKey(cacheKey).crossfade(true).build(),imageLoader=loader,contentDescription=asset.entry.name,modifier=Modifier.fillMaxSize(),contentScale=scale,onSuccess={onSettled?.invoke()},onError={failed=true;onSettled?.invoke()})
         if(failed) Text(stringResource(R.string.preview_unavailable),Modifier.background(Color.Black.copy(alpha=.6f)).padding(4.dp),style=MaterialTheme.typography.labelSmall)
     }
 }

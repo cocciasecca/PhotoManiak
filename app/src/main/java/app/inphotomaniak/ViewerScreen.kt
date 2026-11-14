@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,20 +45,32 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun ViewerContent(assets: List<Asset>,initial: Int,model: GalleryModel,onClose: ()->Unit) {
     val pager=rememberPagerState(initialPage=initial) { assets.size }
+    var slideshow by rememberSaveable { mutableStateOf(false) }
+    var slideshowSetup by remember { mutableStateOf(false) }
+    var slideSeconds by rememberSaveable { mutableIntStateOf(5) }
     var addToAlbum by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     val asset=assets[pager.currentPage]
     val state by model.state.collectAsStateWithLifecycle()
     val casting by model.casting.state.collectAsStateWithLifecycle()
-    LaunchedEffect(casting.connected,asset.entry.path) {
-        if(casting.connected) model.driveClient?.let { client -> model.images?.let { model.casting.show(asset.entry,client,it) } }
+    LaunchedEffect(casting.connected,asset.entry.path,slideshow) {
+        if(casting.connected && !slideshow) model.driveClient?.let { client -> model.images?.let { model.casting.show(asset.entry,client,it) } }
     }
     var confirmDelete by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var sharing by remember { mutableStateOf(false) }
     var shareError by remember { mutableStateOf<String?>(null) }
+    if(slideshow) {
+        Slideshow(assets,pager.currentPage,slideSeconds,model) { index ->
+            scope.launch { pager.scrollToPage(index);slideshow=false }
+        }
+        return
+    }
+    if(slideshowSetup) SlideshowSetup(slideSeconds,{slideshowSetup=false}) {
+        slideSeconds=it;slideshowSetup=false;slideshow=true
+    }
     BackHandler { onClose() }
     if(confirmDelete) DeleteConfirmation(1,onDismiss={confirmDelete=false}) {
         confirmDelete=false
@@ -91,6 +104,7 @@ import kotlinx.coroutines.launch
             Box {
                 IconButton(onClick={menu=true}) { Icon(Icons.Outlined.MoreVert,stringResource(R.string.more_options),tint=Color.White) }
                 DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
+                    DropdownMenuItem(text={Text(stringResource(R.string.slideshow))},leadingIcon={Icon(Icons.Outlined.Slideshow,null)},enabled=assets.any { !it.entry.video },onClick={menu=false;slideshowSetup=true})
                     CastMenuItem(model.casting) { menu=false }
                     DropdownMenuItem(text={Text(stringResource(R.string.add_to_album))},leadingIcon={Icon(Icons.Outlined.AddPhotoAlternate,null)},enabled=!state.busy && !sharing,onClick={menu=false;addToAlbum=true})
                     DropdownMenuItem(text={Text(stringResource(if(archived) R.string.unarchive else R.string.archive))},leadingIcon={Icon(if(archived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,null)},enabled=!state.busy && !sharing,onClick={menu=false;model.archive(listOf(asset),!archived)})

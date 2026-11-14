@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 internal class CastController(app: Application,scope: CoroutineScope) {
     val state=MutableStateFlow(CastingState()).asStateFlow()
     fun show(entry: RemoteEntry,client: DriveClient,images: ImageLoader) = Unit
+    fun clearError() = Unit
     fun stop() = Unit
     fun close() = Unit
 }

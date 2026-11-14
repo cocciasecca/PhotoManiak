@@ -19,7 +19,7 @@ class FossEditionTest {
         store.put("foss",model)
         try {
             compose.waitUntil(5000) { model.state.value.ready }
-            assertEquals("foss",BuildConfig.FLAVOR)
+            assertEquals("FOSS",BuildConfig.FLAVOR)
             assertThrows(ClassNotFoundException::class.java) { Class.forName("com.google.android.gms.cast.framework.CastContext") }
             assertThrows(ClassNotFoundException::class.java) { Class.forName("app.inphotomaniak.CastRelay") }
             val asset=Asset(RemoteEntry("/2~photo.jpg","photo.jpg",false,"image/jpeg",1,"test"),CaptureDate(1,"2026-11-14","Filename"),true)

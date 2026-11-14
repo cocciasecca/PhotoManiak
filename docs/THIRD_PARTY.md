@@ -2,7 +2,7 @@
 
 PhotoManiak project code is MIT licensed. Third-party libraries keep their original licenses. This inventory records the resolved FOSS debug runtime dependencies for 0.7.2; the Apache 2.0 license and available upstream notices are bundled in both APKs under assets/licenses.
 
-The with-Cast edition additionally includes Google Play services/Cast and their dependencies under their own terms. These are not covered by PhotoManiak’s MIT license and are excluded from the FOSS build. See [Google Cast terms](https://developers.google.com/cast/docs/terms).
+The nonFOSS edition additionally includes Google Play services/Cast and their dependencies under their own terms. These are not covered by PhotoManiak’s MIT license and are excluded from the FOSS build. See [Google Cast terms](https://developers.google.com/cast/docs/terms).
 
 | FOSS runtime artifact | Declared license (Maven POM, inherited where applicable) |
 |---|---|

@@ -4,20 +4,20 @@ A native Android gallery for photos and videos stored on Infomaniak kDrive. Brow
 
 **[Download](https://github.com/cocciasecca/PhotoManiak/releases)** · Android 8.0+ · English interface
 
-## FOSS and non-FOSS editions
+## FOSS and nonFOSS editions
 
 Starting with **0.7.2**, each release offers two APKs from the same project:
 
-| | PhotoManiak FOSS | PhotoManiak with Cast (non-FOSS) |
+| | PhotoManiak FOSS | PhotoManiak nonFOSS |
 |---|---|---|
 | Gallery, folders, sharing, Favorites, Archive, albums, and appearance settings | Yes | Yes |
 | Google Cast | No | Yes |
 | Proprietary Google libraries included in the APK | No | Yes — Google Cast SDK |
 | Google Play services needed | No | Only for Cast |
 
-Download `PhotoManiak-<version>-foss.apk` for the FOSS edition or `PhotoManiak-<version>-withCast.apk` for Google Cast support. Both use the same app ID and signing certificate: install either over your existing version to keep your account and preferences, or switch editions at the same/newer version. They cannot be installed side by side. Settings shows the installed edition.
+From 0.8.0, download `PhotoManiak-<version>-FOSS.apk` for the FOSS edition or `PhotoManiak-<version>-nonFOSS.apk` for Google Cast support. Both use the same app ID and signing certificate: install either over your existing version to keep your account and preferences, or switch editions at the same/newer version. They cannot be installed side by side. Settings shows the installed edition.
 
-PhotoManiak's own code is [MIT licensed](LICENSE); dependencies retain their own licenses. The with-Cast APK contains proprietary Google SDKs and is not fully FOSS. Version 0.7.1 and earlier Cast releases only provided that edition. F-Droid availability is not yet promised.
+PhotoManiak's own code is [MIT licensed](LICENSE); dependencies retain their own licenses. The nonFOSS APK contains proprietary Google SDKs and is not fully FOSS. Version 0.7.1 and earlier Cast releases only provided that edition. F-Droid availability is not yet promised.
 
 ## Connect your kDrive
 
@@ -39,11 +39,12 @@ You can include multiple folders from the spaces your account can access. Each u
 
 - Capture-date timeline using photo/video metadata, with filename and file-date fallbacks.
 - Photo zoom, swipe navigation, video playback, and original-file sharing.
+- **Photo viewer → More options → Slideshow:** choose 3, 5, 10, or 30 seconds per photo. During playback, use **Slideshow options → Random photos / Exit slideshow**. Videos are skipped; the current timeline or album supplies the photos.
 - Favorites, Archive, and virtual albums, with optional [collection synchronization through kDrive](docs/COLLECTIONS.md).
 - Small, Medium, or Large thumbnails; System, Light, or Dark appearance; preset, wallpaper, or custom colors.
 - A scrollable **Info** panel with date source, file path, and available GPS coordinates, camera, and dimensions.
 - Multiple selection for sharing or deletion. **Delete moves originals to the kDrive trash after confirmation**, affecting the files on kDrive too.
-- [Google Cast](docs/CAST.md) in the non-FOSS edition: show photos and videos on a compatible TV on the same Wi-Fi network. Keep the app open while casting.
+- [Google Cast](docs/CAST.md) in the nonFOSS edition: show photos and videos on a compatible TV on the same Wi-Fi network. Keep the app open while casting.
 
 PhotoManiak does not upload photos or videos. Virtual albums do not move originals. Optional collection sync only writes its own metadata folder and JSON files.
 
@@ -58,11 +59,13 @@ Release APKs are currently development builds signed with a debug key. Credentia
 Requires JDK 17, Android SDK Platform 35, and Build Tools 35.0.0. Set `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 
 ```sh
-./gradlew :app:testFossDebugUnitTest :app:lintFossDebug :app:assembleFossDebug
-./gradlew :app:testWithCastDebugUnitTest :app:lintWithCastDebug :app:assembleWithCastDebug
+./gradlew :app:testFOSSDebugUnitTest :app:lintFOSSDebug :app:assembleFOSSDebug
+./gradlew :app:testNonFOSSDebugUnitTest :app:lintNonFOSSDebug :app:assembleNonFOSSDebug
 ```
 
-APKs are written to `app/build/outputs/apk/foss/debug/` and `app/build/outputs/apk/withCast/debug/`. Device-test tasks are `:app:connectedFossDebugAndroidTest` and `:app:connectedWithCastDebugAndroidTest`; run them separately because both editions share an app ID. See [editions and dependency checks](docs/EDITIONS.md).
+APKs are written to `app/build/outputs/apk/FOSS/debug/` and `app/build/outputs/apk/nonFOSS/debug/`. Device-test tasks are `:app:connectedFOSSDebugAndroidTest` and `:app:connectedNonFOSSDebugAndroidTest`; run them separately because both editions share an app ID. See [editions and dependency checks](docs/EDITIONS.md).
+
+Release tags (`v*`) trigger GitHub Actions to build, test, sign, and publish both APKs. The distribution certificate remains the same as earlier releases.
 
 ## More details
 
