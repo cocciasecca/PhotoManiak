@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 — 2026-11-17
+
+- Refresh the library incrementally on app startup, reusing capture dates for unchanged files.
+- Add **Settings → Full refresh** with confirmation to reread all capture dates.
+- Show **Analyzing photo dates for timeline** with progress counting only files that need metadata reads.
+- Preserve completed metadata reads when a scan is stopped.
+- Show a blurred kDrive thumbnail while the original photo loads in the viewer and slideshow.
+
 ## 0.8.0 — 2026-11-14
 
 - Add photo slideshows from the current timeline or album, with 3/5/10/30-second intervals, pause/resume, next photo, random order, and exit controls. Skip videos and wait for photo loading before advancing.

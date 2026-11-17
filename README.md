@@ -50,7 +50,7 @@ PhotoManiak does not upload photos or videos. Virtual albums do not move origina
 
 ## Before you start
 
-The first scan can take time and use mobile data while reading capture metadata. Sharing downloads the full original. Supported formats depend on kDrive thumbnails and your device's codecs; account access depends on your plan and permissions.
+The library refreshes incrementally on app startup. Regular refresh checks selected folders and reads capture dates only for new, changed or unfinished files. Use **Settings → Full refresh** to reread all capture dates. The first scan and full refresh can take time and use mobile data while reading capture metadata. Sharing downloads the full original. Supported formats depend on kDrive thumbnails and your device's codecs; account access depends on your plan and permissions.
 
 Release APKs are currently development builds signed with a debug key. Credentials are encrypted on the device; signing out clears local account data and settings.
 

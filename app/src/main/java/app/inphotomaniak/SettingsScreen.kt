@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable internal fun SettingsScreen(s: GalleryState,model: GalleryModel) {
     var confirm by remember { mutableStateOf(false) }
+    var confirmRefresh by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
         Text(stringResource(R.string.settings),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
         Text(stringResource(R.string.appearance),style=MaterialTheme.typography.titleMedium)
@@ -35,10 +36,21 @@ import androidx.compose.ui.unit.dp
         Text(stringResource(R.string.signed_in_token));Text(stringResource(R.string.connected_drive,s.account?.driveId.orEmpty()),color=MaterialTheme.colorScheme.primary)
         HorizontalDivider()
         Text(stringResource(R.string.folder_count,s.rules.included.size,s.rules.excluded.size))
+        Text(stringResource(R.string.library_refresh_help),style=MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick={confirmRefresh=true},enabled=!s.busy && !s.scanning && s.rules.included.isNotEmpty()) {
+            Text(stringResource(R.string.full_refresh))
+        }
         Text(stringResource(R.string.cache_description))
         Text(stringResource(R.string.metadata_description),style=MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.app_about,BuildConfig.VERSION_NAME,stringResource(R.string.edition_name)),style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning && !s.syncing) { Text(stringResource(R.string.sign_out_clear)) }
     }
+    if(confirmRefresh) AlertDialog(
+        onDismissRequest={confirmRefresh=false},
+        title={Text(stringResource(R.string.full_refresh))},
+        text={Text(stringResource(R.string.full_refresh_description))},
+        confirmButton={TextButton(onClick={confirmRefresh=false;model.fullRefresh()},enabled=!s.busy && !s.scanning && s.rules.included.isNotEmpty()) { Text(stringResource(R.string.full_refresh)) }},
+        dismissButton={TextButton(onClick={confirmRefresh=false}) { Text(stringResource(R.string.cancel)) }}
+    )
     if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.sign_out_title))},text={Text(stringResource(if(s.pendingEdits>0) R.string.sign_out_unsynced else R.string.sign_out_description))},confirmButton={TextButton(onClick={confirm=false;model.logout()}) { Text(stringResource(R.string.sign_out)) }},dismissButton={TextButton(onClick={confirm=false}) { Text(stringResource(R.string.cancel)) }})
 }

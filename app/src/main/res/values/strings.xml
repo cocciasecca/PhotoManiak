@@ -66,7 +66,7 @@
     <string name="source_remote">Remote modification</string>
     <string name="scan_searching">Looking for photos and videos…</string>
     <string name="scan_discovery">%1$d items · %2$d folders</string>
-    <string name="scan_dates">Photo dates · %1$d/%2$d</string>
+    <string name="scan_dates">Analyzing photo dates for timeline · %1$d/%2$d</string>
     <string name="scan_provisional">%1$d items have provisional dates. Tap Refresh to retry their metadata.</string>
     <string name="library_updated">Library updated</string>
     <string name="scan_stopped">Scan stopped</string>
@@ -160,4 +160,7 @@
     <string name="resume_slideshow">Resume slideshow</string>
     <string name="next_photo">Next photo</string>
     <string name="slideshow_options">Slideshow options</string>
+    <string name="full_refresh">Full refresh</string>
+    <string name="library_refresh_help">On app startup, PhotoManiak checks your selected folders for changes. Regular refresh reuses saved capture dates for unchanged files and reads dates for new, changed or unfinished files.</string>
+    <string name="full_refresh_description">Scan all selected folders and read capture dates again for every photo and video. This can take time and use mobile data. Your files on kDrive will not be changed.</string>
 </resources>

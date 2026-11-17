@@ -25,15 +25,27 @@ import java.util.Locale
 }
 @Composable internal fun Photo(asset: Asset,model: GalleryModel,modifier: Modifier,scale: ContentScale,onSettled: (() -> Unit)? = null) {
     val context=LocalContext.current
-    var failed by remember(asset.entry.path) { mutableStateOf(false) }
     val loader=model.images
     if(loader==null) { LaunchedEffect(Unit) { onSettled?.invoke() };return }
     val thumbnail = scale == ContentScale.Crop
     val imageUrl = if(thumbnail) model.driveClient!!.thumbnail(asset.entry.path) else model.driveClient!!.url(asset.entry.path)
     val cacheKey = "${model.driveClient!!.account.driveId}:${asset.entry.path}:${asset.entry.etag}:${asset.entry.modified}:$thumbnail"
+    var failed by remember(cacheKey) { mutableStateOf(false) }
+    var loaded by remember(cacheKey) { mutableStateOf(false) }
     Box(modifier,contentAlignment=Alignment.Center) {
         Icon(Icons.Outlined.Image,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
-        AsyncImage(model=ImageRequest.Builder(context).data(imageUrl.toString()).memoryCacheKey(cacheKey).diskCacheKey(cacheKey).crossfade(true).build(),imageLoader=loader,contentDescription=asset.entry.name,modifier=Modifier.fillMaxSize(),contentScale=scale,onSuccess={onSettled?.invoke()},onError={failed=true;onSettled?.invoke()})
+        if(!thumbnail && !loaded) {
+            val thumbnailKey = "${model.driveClient!!.account.driveId}:${asset.entry.path}:${asset.entry.etag}:${asset.entry.modified}:true"
+            AsyncImage(
+                model=ImageRequest.Builder(context)
+                    .data(model.driveClient!!.thumbnail(asset.entry.path).toString())
+                    .memoryCacheKey("$thumbnailKey:blurred-v1").diskCacheKey(thumbnailKey)
+                    .transformations(LoadingPreviewBlur).build(),
+                imageLoader=loader,contentDescription=null,
+                modifier=Modifier.fillMaxSize(),contentScale=scale
+            )
+        }
+        AsyncImage(model=ImageRequest.Builder(context).data(imageUrl.toString()).memoryCacheKey(cacheKey).diskCacheKey(cacheKey).crossfade(thumbnail).build(),imageLoader=loader,contentDescription=asset.entry.name,modifier=Modifier.fillMaxSize(),contentScale=scale,onSuccess={loaded=true;failed=false;onSettled?.invoke()},onError={failed=true;onSettled?.invoke()})
         if(failed) Text(stringResource(R.string.preview_unavailable),Modifier.background(Color.Black.copy(alpha=.6f)).padding(4.dp),style=MaterialTheme.typography.labelSmall)
     }
 }

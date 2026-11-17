@@ -1,5 +1,12 @@
 # Verification
 
+## Version 0.8.1 — November 17, 2026
+
+- Both editions compiled and passed Android Lint. All existing JVM tests passed: 54 FOSS / 63 nonFOSS.
+- The FOSS APK passed the prohibited Google SDK class and manifest check. Dependencies and signing configuration are unchanged.
+- No emulator or physical-device suite was run for this patch. Blurred-preview appearance and startup refresh with a live kDrive account still require device validation.
+- Release APKs are built, checked, signed and published by the version-tag GitHub Actions workflow.
+
 ## Version 0.8.0 — November 14, 2026
 
 - Both editions compiled and passed Android Lint. JVM tests: 54 FOSS / 63 nonFOSS passed, including sequential wrapping and random-next bounds/no immediate repeats.

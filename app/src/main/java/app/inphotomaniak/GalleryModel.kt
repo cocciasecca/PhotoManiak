@@ -41,7 +41,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         if(account != null) connect(account)
         val rules = settings.rules()
         mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),colorPalette=settings.colorPalette(),customColor=settings.customColor(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
-    }; syncCollections() } }
+    }; refresh() } }
     private fun connect(account: Account) {
         driveClient = DriveClient(account)
         images = ImageLoader.Builder(getApplication()).okHttpClient(driveClient!!.http)
@@ -184,13 +184,17 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
             }
         }
     }
-    fun refresh() {
+    fun refresh() = refreshLibrary(full = false)
+    fun fullRefresh() = refreshLibrary(full = true)
+
+    private fun refreshLibrary(full: Boolean) {
         syncCollections()
         if(state.value.busy || state.value.scanning || state.value.rules.included.isEmpty()) return
         val client = driveClient ?: return
         val rules = state.value.rules
+        // Claim the scan before launching so repeated requests cannot overlap.
+        mutable.update { it.copy(scanning=true,error=null,progress=getApplication<Application>().getString(R.string.scan_searching)) }
         scan = viewModelScope.launch {
-            mutable.update { it.copy(scanning=true,error=null,progress=getApplication<Application>().getString(R.string.scan_searching)) }
             try { withContext(Dispatchers.IO) {
                 val previous = db.all().associateBy { it.entry.path }
                 val found = linkedMapOf<String,RemoteEntry>()
@@ -210,26 +214,32 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
                 }
                 val assets = found.values.map { entry ->
                     previous[entry.path]?.takeIf { it.entry.etag==entry.etag && it.entry.modified==entry.modified && (entry.etag.isNotBlank() || entry.modified > 0) }
+                        ?.let { it.copy(entry=entry,metadataRead=it.metadataRead && !full) }
                         ?: Asset(entry,Dates.resolve(emptyMap(),entry.name,entry.modified),false)
                 }.toMutableList()
                 // Only replace after every selected folder has been successfully listed.
                 db.replace(assets); publish(assets)
                 var failures = 0
                 val changed = mutableListOf<Asset>()
-                assets.indices.forEach { i ->
-                    ensureActive()
-                    if(!assets[i].metadataRead) {
+                val unread = assets.indices.filter { !assets[it].metadataRead }
+                if(unread.isNotEmpty()) mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,0,unread.size)) }
+                try {
+                    unread.forEachIndexed { position, i ->
+                        ensureActive()
                         val entry = assets[i].entry
                         try {
                             val tags = MediaReader.tags(client,entry)
                             assets[i] = Asset(entry,Dates.resolve(tags,entry.name,entry.modified),true)
                             changed.add(assets[i])
-                        } catch(e: Exception) { ensureActive(); failures++ }
+                        } catch(e: CancellationException) { throw e }
+                        catch(e: Exception) { ensureActive(); failures++ }
+                        if(changed.size >= 25) { db.upsert(changed); changed.clear(); publish(assets) }
+                        mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,position+1,unread.size)) }
                     }
-                    if(i % 25 == 0 && changed.isNotEmpty()) { db.upsert(changed); changed.clear(); publish(assets) }
-                    mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,i+1,assets.size)) }
+                } finally {
+                    // Keep completed metadata reads even when the user stops the scan.
+                    db.upsert(changed); publish(assets)
                 }
-                db.upsert(changed); publish(assets)
                 mutable.update { it.copy(progress=if(failures > 0) getApplication<Application>().getString(R.string.scan_provisional,failures) else getApplication<Application>().getString(R.string.library_updated)) }
             } } catch(e: CancellationException) { mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_stopped)) }; throw e }
             catch(e: Exception) { mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.connection_failed)) } }
