@@ -39,8 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
     Scaffold(
         topBar={ TopAppBar(title={ Text(stringResource(R.string.app_name),fontWeight=FontWeight.Bold) }, actions={
             CastButton(model.casting)
-            if(s.scanning) IconButton(onClick=model::stop) { Icon(Icons.Outlined.Stop,stringResource(R.string.stop_scan)) }
-            else IconButton(onClick=model::refresh,enabled=s.rules.included.isNotEmpty() && !s.busy) { Icon(Icons.Outlined.Refresh,stringResource(R.string.refresh_library)) }
+            LibraryScanButton(s,onPause=model::stop,onResume=model::refresh)
         }) },
         bottomBar={ Column { CastControls(model.casting); NavigationBar {
             listOf(Triple("timeline",stringResource(R.string.photos),Icons.Outlined.PhotoLibrary),Triple("collections",stringResource(R.string.collections),Icons.Outlined.CollectionsBookmark),Triple("folders",stringResource(R.string.folders),Icons.Outlined.Folder),Triple("settings",stringResource(R.string.settings),Icons.Outlined.Settings)).forEach { (key,label,icon) ->
@@ -59,4 +58,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
             else -> key(s.collectionView,s.albumId) { Timeline(s.copy(assets=visible),model,grid) { selected=it.entry.path } }
         }
     } }
+}
+
+@Composable internal fun LibraryScanButton(s: GalleryState,onPause: () -> Unit,onResume: () -> Unit) {
+    when {
+        !s.initialScanComplete && s.scanning -> IconButton(onClick=onPause) {
+            Icon(Icons.Outlined.Pause,stringResource(R.string.pause_initial_scan))
+        }
+        !s.initialScanComplete -> IconButton(onClick=onResume,enabled=s.rules.included.isNotEmpty() && !s.busy) {
+            Icon(Icons.Outlined.PlayArrow,stringResource(R.string.resume_initial_scan))
+        }
+        s.scanning -> IconButton(onClick=onPause) { Icon(Icons.Outlined.Stop,stringResource(R.string.stop_scan)) }
+        else -> IconButton(onClick=onResume,enabled=s.rules.included.isNotEmpty() && !s.busy) {
+            Icon(Icons.Outlined.Refresh,stringResource(R.string.refresh_library))
+        }
+    }
 }

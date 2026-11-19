@@ -69,7 +69,7 @@
     <string name="scan_dates">Analyzing photo dates for timeline · %1$d/%2$d</string>
     <string name="scan_provisional">%1$d items have provisional dates. Tap Refresh to retry their metadata.</string>
     <string name="library_updated">Library updated</string>
-    <string name="scan_stopped">Scan stopped</string>
+    <string name="scan_stopped">Scan stopped — tap Refresh to resume.</string>
     <string name="connection_failed">Connection failed</string>
     <string name="operation_failed">Operation failed</string>
     <string name="delete">Delete</string>
@@ -161,6 +161,11 @@
     <string name="next_photo">Next photo</string>
     <string name="slideshow_options">Slideshow options</string>
     <string name="full_refresh">Full refresh</string>
-    <string name="library_refresh_help">On app startup, PhotoManiak checks your selected folders for changes. Regular refresh reuses saved capture dates for unchanged files and reads dates for new, changed or unfinished files.</string>
+    <string name="library_refresh_help">During the initial scan, use Pause or Play in the toolbar. A manual pause is kept after reopening the app. Play checks for new files and continues reading missing dates. After the initial scan finishes, incremental refresh runs on startup and is available in the toolbar. Full refresh is available once the initial scan finishes.</string>
     <string name="full_refresh_description">Scan all selected folders and read capture dates again for every photo and video. This can take time and use mobile data. Your files on kDrive will not be changed.</string>
+    <string name="scan_paused">Scan paused — resumes when you return to the app.</string>
+    <string name="scan_waiting">Waiting for connection — retrying automatically. You can pause or stop the scan.</string>
+    <string name="pause_initial_scan">Pause initial scan</string>
+    <string name="resume_initial_scan">Resume initial scan</string>
+    <string name="initial_scan_paused">Initial scan paused — tap Play to check for new files and continue.</string>
 </resources>

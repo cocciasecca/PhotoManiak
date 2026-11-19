@@ -23,6 +23,7 @@ class DriveClient(
     val account: Account,
     private val base: HttpUrl = "https://api.kdrive.infomaniak.com/".toHttpUrl(),
     private val requestIntervalMillis: Long = 1100,
+    configureHttp: (OkHttpClient.Builder) -> Unit = {},
 ) {
     private var nextRequestNanos = 0L
     private val gate = Any()
@@ -63,7 +64,7 @@ class DriveClient(
                 request=request.newBuilder().url(destination).removeHeader("Authorization").build()
             }
             requireNotNull(response)
-        }.build()
+        }.also(configureHttp).build()
 
     // Mutations use a separate client: image/video requests remain strictly GET/HEAD.
     // No redirects or automatic retries for a confirmed trash operation.
@@ -167,7 +168,7 @@ class DriveClient(
         .newBuilder().addQueryParameter("width","384").addQueryParameter("height","384").build()
 
     fun checkResponse(response: Response) {
-        if(!response.isSuccessful) throw IOException(when(response.code) {
+        if(!response.isSuccessful) throw DriveHttpException(response.code,when(response.code) {
             401 -> "Invalid, expired or revoked token. Create a new one in Infomaniak Manager."
             403 -> "API access denied. Check your token scope and account permissions."
             404 -> "Drive, folder or file not found. Check your kDrive ID."
@@ -181,18 +182,21 @@ class DriveClient(
         var cursor: String?=null
         val seen=mutableSetOf<String>()
         do {
-            val builder=endpoint("3/drive/${account.driveId}/files/${fileId(path)}/files").newBuilder()
-                .addQueryParameter("limit","100").addQueryParameter("order_by","name").addQueryParameter("order_for[name]","asc")
-            cursor?.let { builder.addQueryParameter("cursor",it) }
-            val page=http.newCall(Request.Builder().url(builder.build()).get().build()).execute().use {
-                checkResponse(it)
-                parsePage(it.body?.string() ?: throw IOException("Empty API response"),path)
-            }
+            val page=listPage(path,cursor)
             page.entries.forEach { result[it.path]=it }
             cursor=page.nextCursor
             if(cursor!=null && !seen.add(cursor)) throw IOException("Invalid API pagination; previous index preserved")
         } while(cursor!=null)
         return result.values.toList()
+    }
+    fun listPage(path: String, cursor: String?): Page {
+        val builder=endpoint("3/drive/${account.driveId}/files/${fileId(path)}/files").newBuilder()
+            .addQueryParameter("limit","100").addQueryParameter("order_by","name").addQueryParameter("order_for[name]","asc")
+        cursor?.let { builder.addQueryParameter("cursor",it) }
+        return http.newCall(Request.Builder().url(builder.build()).get().build()).execute().use {
+            checkResponse(it)
+            parsePage(it.body?.string() ?: throw IOException("Empty API response"),path)
+        }
     }
     data class Page(val entries: List<RemoteEntry>,val nextCursor: String?)
     companion object {
@@ -223,3 +227,5 @@ class DriveClient(
         }
     }
 }
+
+internal class DriveHttpException(val status: Int, message: String): IOException(message)

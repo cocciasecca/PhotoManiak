@@ -1,6 +1,12 @@
 package app.inphotomaniak
 
 import android.app.Application
+import android.os.Handler
+import android.os.Looper
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
@@ -15,6 +21,7 @@ import java.io.File
 data class GalleryState(
     val ready: Boolean = false, val account: Account? = null, val rules: FolderRules = FolderRules(),
     val assets: List<Asset> = emptyList(), val folders: List<RemoteEntry> = emptyList(), val path: String = "/",
+    val initialScanComplete: Boolean = false,
     val busy: Boolean = false, val scanning: Boolean = false, val progress: String = "", val error: String? = null,
     val collections: Collections = Collections(), val collectionView: String = "all", val albumId: String? = null,
     val syncFolder: String? = null, val syncing: Boolean = false, val syncError: String? = null,
@@ -24,7 +31,11 @@ data class GalleryState(
     val screen: String = "timeline", val thumbnailSize: ThumbnailSize = ThumbnailSize.MEDIUM
 )
 @OptIn(coil.annotation.ExperimentalCoilApi::class)
-class GalleryModel(app: Application): AndroidViewModel(app) {
+class GalleryModel @JvmOverloads constructor(
+    app: Application,
+    private val scanLifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle,
+    private val scanClientFactory: (Account) -> DriveClient = { DriveClient(it) }
+): AndroidViewModel(app), DefaultLifecycleObserver {
     internal val casting = CastController(app,viewModelScope)
     private val settings = Settings(app)
     private val db = AssetDb(app)
@@ -36,12 +47,27 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
     var driveClient: DriveClient? = null; private set
     var images: ImageLoader? = null; private set
     private var scan: Job? = null
+    private var scanClient: DriveClient? = null
+    private var foreground = scanLifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+    private var resumeScan = false
+    private var forceFullScan = false
+    private var recheckScanFolders = false
+    private var manualStop = false
+    @Volatile private var cleared = false
+    init { viewModelScope.launch { if(!cleared) scanLifecycle.addObserver(this@GalleryModel) } }
     init { viewModelScope.launch { withContext(Dispatchers.IO) {
         val account = settings.account()
         if(account != null) connect(account)
         val rules = settings.rules()
-        mutable.value = GalleryState(ready=true,account=account,rules=rules,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),colorPalette=settings.colorPalette(),customColor=settings.customColor(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=if(account == null) emptyList() else db.all().filter { rules.accepts(it.entry.path) })
-    }; refresh() } }
+        val indexed=if(account==null) emptyList() else db.all().filter { rules.accepts(it.entry.path) }
+        // Older versions had no completion flag. Reuse a fully indexed library on upgrade.
+        val initialComplete=account!=null && settings.initialScanComplete(indexed.isNotEmpty() && indexed.all { it.metadataRead } && db.checkpoint()==null)
+        settings.saveInitialScanComplete(initialComplete)
+        mutable.value = GalleryState(ready=true,account=account,rules=rules,initialScanComplete=initialComplete,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),colorPalette=settings.colorPalette(),customColor=settings.customColor(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=indexed)
+    }; manualStop=settings.scanStopped();resumeScan=!manualStop && state.value.account!=null && state.value.rules.included.isNotEmpty()
+        if(manualStop) mutable.update { it.copy(progress=getApplication<Application>().getString(if(state.value.initialScanComplete) R.string.scan_stopped else R.string.initial_scan_paused)) }
+        syncCollections();startScanIfNeeded()
+    } }
     private fun connect(account: Account) {
         driveClient = DriveClient(account)
         images = ImageLoader.Builder(getApplication()).okHttpClient(driveClient!!.http)
@@ -53,11 +79,12 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         val client = DriveClient(account)
         val folders = client.list("/").filter { it.directory }
         // A fresh login must never inherit an unreadable previous account's data.
-        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); settings.save(state.value.colorPalette,state.value.customColor); db.replace(emptyList()); collectionDb.clear()
+        settings.clear(); settings.save(state.value.thumbnailSize); settings.save(state.value.themeMode); settings.save(state.value.colorPalette,state.value.customColor); db.replace(emptyList()); db.clearScan(); collectionDb.clear()
         File(getApplication<Application>().cacheDir,"images").deleteRecursively()
         File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
+        manualStop=false;resumeScan=false;forceFullScan=false;recheckScanFolders=false
         settings.save(account); connect(account)
-        mutable.update { it.copy(account=account,rules=FolderRules(),assets=emptyList(),collections=Collections(),syncFolder=null,pendingEdits=0,lastSync=0,syncError=null,collectionView="all",albumId=null,folders=folders,path="/",screen="folders") }
+        mutable.update { it.copy(account=account,initialScanComplete=false,rules=FolderRules(),assets=emptyList(),collections=Collections(),syncFolder=null,pendingEdits=0,lastSync=0,syncError=null,collectionView="all",albumId=null,folders=folders,path="/",screen="folders") }
     }
     fun collectionView(view: String, album: String? = null) {
         mutable.update { it.copy(collectionView=view,albumId=album,screen="timeline") }
@@ -170,6 +197,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
                     currentCoroutineContext().ensureActive()
                     // Never remove a local record until kDrive confirms the trash operation.
                     client.trash(entry)
+                    db.clearScan() // A paused discovery must not reintroduce a file just trashed.
                     db.remove(entry.path)
                     deleted.add(entry.path)
                     mutable.update { it.copy(assets=it.assets.filterNot { a -> a.entry.path == entry.path },
@@ -185,72 +213,90 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
         }
     }
     fun refresh() = refreshLibrary(full = false)
-    fun fullRefresh() = refreshLibrary(full = true)
+    fun fullRefresh() { if(state.value.initialScanComplete) refreshLibrary(full = true) }
 
+    override fun onStart(owner: LifecycleOwner) {
+        foreground=true
+        startScanIfNeeded()
+    }
+    override fun onStop(owner: LifecycleOwner) {
+        foreground=false
+        pauseScan()
+    }
+    private fun pauseScan() {
+        scan?.cancel()
+        // This client belongs only to the scanner: do not cancel photos or Cast.
+        scanClient?.http?.dispatcher?.cancelAll()
+    }
     private fun refreshLibrary(full: Boolean) {
-        syncCollections()
         if(state.value.busy || state.value.scanning || state.value.rules.included.isEmpty()) return
-        val client = driveClient ?: return
-        val rules = state.value.rules
-        // Claim the scan before launching so repeated requests cannot overlap.
+        manualStop=false;settings.scanStopped(false)
+        resumeScan=true;forceFullScan=full
+        recheckScanFolders=!state.value.initialScanComplete
+        syncCollections();startScanIfNeeded()
+    }
+    private fun startScanIfNeeded() {
+        if(cleared || !foreground || !resumeScan || manualStop || !state.value.ready || state.value.busy || state.value.scanning) return
+        val account=state.value.account ?: return
+        val rules=state.value.rules
+        if(rules.included.isEmpty()) return
+        val client=scanClientFactory(account)
+        scanClient=client
+        val full=forceFullScan
+        val recheck=recheckScanFolders
         mutable.update { it.copy(scanning=true,error=null,progress=getApplication<Application>().getString(R.string.scan_searching)) }
-        scan = viewModelScope.launch {
-            try { withContext(Dispatchers.IO) {
-                val previous = db.all().associateBy { it.entry.path }
-                val found = linkedMapOf<String,RemoteEntry>()
-                val pending = ArrayDeque(rules.included.sorted())
-                val visited = mutableSetOf<String>()
-                while(pending.isNotEmpty()) {
-                    ensureActive()
-                    val path = pending.removeFirst()
-                    if(!visited.add(path.trimEnd('/')) || rules.excluded(path)) continue
-                    client.list(path).forEach { entry ->
-                        if(!rules.excluded(entry.path)) {
-                            if(entry.directory) pending.add(entry.path)
-                            else if(entry.media && rules.accepts(entry.path)) found[entry.path] = entry
-                        }
-                    }
-                    mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_discovery,found.size,visited.size)) }
+        scan=viewModelScope.launch {
+            var completed=false
+            try {
+                val failures=withContext(Dispatchers.IO) {
+                    val result=LibraryScan(db,account.driveId,rules,client::listPage,
+                        { MediaReader.tags(client,it) },::publish,
+                        { phase,done,total ->
+                            val app=getApplication<Application>()
+                            val message=when(phase) {
+                                "waiting" -> app.getString(R.string.scan_waiting)
+                                "discovery" -> app.getString(R.string.scan_discovery,done,total)
+                                else -> app.getString(R.string.scan_dates,done,total)
+                            }
+                            mutable.update { it.copy(progress=message) }
+                        }).run(full,recheck) { recheckScanFolders=false;forceFullScan=false }
+                    settings.saveInitialScanComplete(true)
+                    mutable.update { it.copy(initialScanComplete=true) }
+                    completed=true
+                    result
                 }
-                val assets = found.values.map { entry ->
-                    previous[entry.path]?.takeIf { it.entry.etag==entry.etag && it.entry.modified==entry.modified && (entry.etag.isNotBlank() || entry.modified > 0) }
-                        ?.let { it.copy(entry=entry,metadataRead=it.metadataRead && !full) }
-                        ?: Asset(entry,Dates.resolve(emptyMap(),entry.name,entry.modified),false)
-                }.toMutableList()
-                // Only replace after every selected folder has been successfully listed.
-                db.replace(assets); publish(assets)
-                var failures = 0
-                val changed = mutableListOf<Asset>()
-                val unread = assets.indices.filter { !assets[it].metadataRead }
-                if(unread.isNotEmpty()) mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,0,unread.size)) }
-                try {
-                    unread.forEachIndexed { position, i ->
-                        ensureActive()
-                        val entry = assets[i].entry
-                        try {
-                            val tags = MediaReader.tags(client,entry)
-                            assets[i] = Asset(entry,Dates.resolve(tags,entry.name,entry.modified),true)
-                            changed.add(assets[i])
-                        } catch(e: CancellationException) { throw e }
-                        catch(e: Exception) { ensureActive(); failures++ }
-                        if(changed.size >= 25) { db.upsert(changed); changed.clear(); publish(assets) }
-                        mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_dates,position+1,unread.size)) }
-                    }
-                } finally {
-                    // Keep completed metadata reads even when the user stops the scan.
-                    db.upsert(changed); publish(assets)
+                resumeScan=false;forceFullScan=false
+                mutable.update { it.copy(progress=if(failures>0) getApplication<Application>().getString(R.string.scan_provisional,failures) else getApplication<Application>().getString(R.string.library_updated)) }
+            } catch(e: CancellationException) {
+                if(completed) { resumeScan=false;forceFullScan=false }
+                // A completed checkpoint records full-refresh mode, so resuming must not reset it.
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val saved=runCatching { db.checkpoint() }.getOrNull()
+                    if(saved?.key==ScanCheckpoint.key(account.driveId,rules) && (!full || saved.full)) forceFullScan=false
                 }
-                mutable.update { it.copy(progress=if(failures > 0) getApplication<Application>().getString(R.string.scan_provisional,failures) else getApplication<Application>().getString(R.string.library_updated)) }
-            } } catch(e: CancellationException) { mutable.update { it.copy(progress=getApplication<Application>().getString(R.string.scan_stopped)) }; throw e }
-            catch(e: Exception) { mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.connection_failed)) } }
-            finally { mutable.update { it.copy(scanning=false) } }
+                mutable.update { it.copy(progress=getApplication<Application>().getString(if(!manualStop) R.string.scan_paused else if(state.value.initialScanComplete) R.string.scan_stopped else R.string.initial_scan_paused)) }
+                throw e
+            } catch(e: Exception) {
+                resumeScan=false;forceFullScan=false
+                mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.connection_failed)) }
+            } finally {
+                scanClient=null
+                mutable.update { it.copy(scanning=false) }
+                // Handles a quick return while cancellation of the old scan was still completing.
+                startScanIfNeeded()
+            }
         }
     }
     private fun publish(assets: List<Asset>) { mutable.update { it.copy(assets=assets.sortedWith(compareByDescending<Asset> { a -> a.date.millis }.thenBy { a -> a.entry.path })) } }
-    fun stop() { scan?.cancel(); driveClient?.http?.dispatcher?.cancelAll() }
+    fun stop() {
+        manualStop=true;settings.scanStopped(true);resumeScan=false
+        pauseScan()
+        mutable.update { it.copy(progress=getApplication<Application>().getString(if(state.value.initialScanComplete) R.string.scan_stopped else R.string.initial_scan_paused)) }
+    }
     fun clearError() { mutable.update { it.copy(error=null) } }
     fun logout() {
         if(state.value.scanning || state.value.busy || state.value.syncing) return
+        resumeScan=false;forceFullScan=false;manualStop=false;recheckScanFolders=false
         syncDelay?.cancel()
         casting.stop()
         operation {
@@ -258,7 +304,7 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
             images?.memoryCache?.clear(); images?.diskCache?.clear(); images?.shutdown(); images=null
             File(getApplication<Application>().cacheDir,"video-thumbs").deleteRecursively()
             File(getApplication<Application>().cacheDir,"shared").deleteRecursively()
-            settings.clear(); db.replace(emptyList()); collectionDb.clear(); driveClient=null
+            settings.clear(); db.replace(emptyList()); db.clearScan(); collectionDb.clear(); driveClient=null
             mutable.value=GalleryState(ready=true)
         }
     }
@@ -269,8 +315,16 @@ class GalleryModel(app: Application): AndroidViewModel(app) {
             try { withContext(Dispatchers.IO) { block() } }
             catch(e: CancellationException) { throw e }
             catch(e: Exception) { mutable.update { it.copy(error=e.message ?: getApplication<Application>().getString(R.string.operation_failed)) } }
-            finally { mutable.update { it.copy(busy=false) } }
+            finally { mutable.update { it.copy(busy=false) };startScanIfNeeded() }
         }
     }
-    override fun onCleared() { casting.close(); driveClient?.http?.dispatcher?.cancelAll(); images?.shutdown(); db.close(); collectionDb.close() }
+    override fun onCleared() {
+        cleared=true;resumeScan=false
+        if(Looper.myLooper()==Looper.getMainLooper()) scanLifecycle.removeObserver(this)
+        else Handler(Looper.getMainLooper()).post { scanLifecycle.removeObserver(this) }
+        pauseScan();casting.close();driveClient?.http?.dispatcher?.cancelAll();images?.shutdown()
+        val running=scan
+        if(running!=null && !running.isCompleted) running.invokeOnCompletion { db.close() } else db.close()
+        collectionDb.close()
+    }
 }

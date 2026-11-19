@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
         Column(Modifier.fillMaxSize().padding(32.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
             Icon(Icons.Outlined.PhotoLibrary,null,Modifier.size(64.dp),tint=MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(20.dp));Text(stringResource(if(s.collectionView=="all") R.string.empty_title else R.string.empty_collection),style=MaterialTheme.typography.headlineSmall)
-            Text(if(s.collectionView!="all") stringResource(R.string.empty_collection_help) else if(s.scanning) stringResource(R.string.exploring_folders) else if(s.rules.included.isEmpty()) stringResource(R.string.empty_choose_folders) else stringResource(R.string.empty_refresh),Modifier.padding(vertical=12.dp))
+            Text(if(s.collectionView!="all") stringResource(R.string.empty_collection_help) else if(s.scanning) stringResource(R.string.exploring_folders) else if(s.rules.included.isEmpty()) stringResource(R.string.empty_choose_folders) else if(!s.initialScanComplete) stringResource(R.string.resume_initial_scan) else stringResource(R.string.empty_refresh),Modifier.padding(vertical=12.dp))
             if(s.rules.included.isEmpty()) Button(onClick={model.screen("folders")}) { Text(stringResource(R.string.choose_folders)) }
         };return
     }

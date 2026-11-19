@@ -1,5 +1,18 @@
 # Verification
 
+## Version 0.8.2 — initial scan controls (November 19, 2026)
+
+- Both editions pass Android Lint and all JVM tests (62 FOSS / 71 nonFOSS). The new test confirms manual resume rediscovers newly added files without rereading completed metadata for unchanged files.
+- Seven targeted Android 15 FOSS tests pass, including the Pause/Play-to-Refresh toolbar transition, persistent manual pause, persisted initial completion followed by automatic incremental refresh on the next launch, checkpoint recovery and database migration.
+- Final FOSS build and both-edition Lint pass after help-text updates. No live kDrive account or physical Android 17 device was tested. Release APKs are built and published by the version-tag GitHub Actions workflow.
+
+## Version 0.8.2 — resumable scanning checks (November 18, 2026)
+
+- Both editions compile and pass Android Lint; all 61 FOSS and 70 nonFOSS JVM tests pass. Seven new scanner tests cover persisted pagination, metadata/full-scan continuation, DNS retry/backoff, authorization errors, changed folder rules, cancellation while waiting, and repeated cursors.
+- All 18 selected Android 15 FOSS tests pass: five new scan tests plus viewer/settings, palette, and slideshow regressions. A local HTTPS server verifies background cancellation, resume from a saved page after model recreation, rapid foreground return, and manual Stop persisting across recreation. SQLite tests verify checkpoint reopening and migration from the previous database without losing indexed photos.
+- The initial device-test failure was a reverse-DNS lookup in the test server URL setup on the main thread; the URL is now prepared on the test thread.
+- FOSS APK proprietary SDK/manifest check passes. No live kDrive account, physical Android 17 device, or original reported DNS failure was used/reproduced. This validates recovery behavior, not the underlying cause of those reports. These checks cover the resumable-scanning changes included in 0.8.2.
+
 ## Version 0.8.1 — November 17, 2026
 
 - Both editions compiled and passed Android Lint. All existing JVM tests passed: 54 FOSS / 63 nonFOSS.

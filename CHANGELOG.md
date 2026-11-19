@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.2 — 2026-11-19
+
+- Show Pause/Play until the initial scan completes, then enable automatic and manual incremental refresh. Manual Play checks for new files while preserving completed metadata.
+- Pause library scanning in the background and resume on return, including after app restarts.
+- Save each folder-listing page and metadata result in a durable local checkpoint; preserve the existing timeline until discovery completes.
+- Retry temporary network failures with backoff, while showing a waiting status.
+- Keep manual pauses across app restarts: use Play during the initial scan, or Refresh for later scans. Cancel only scanner requests when pausing.
+
 ## 0.8.1 — 2026-11-17
 
 - Refresh the library incrementally on app startup, reusing capture dates for unchanged files.
