@@ -72,3 +72,5 @@ Release tags (`v*`) trigger GitHub Actions to build, test, sign, and publish bot
 [Changelog](CHANGELOG.md) · [Collection sync](docs/COLLECTIONS.md) · [Cast](docs/CAST.md) · [Project notes](docs/PROJECT.md) · [Verification](docs/VERIFICATION.md)
 
 Independent app, not affiliated with Infomaniak. Inspired by [kPhotos](https://github.com/mateocarciu/kPhotos) and [Immich](https://github.com/immich-app/immich).
+
+Update checks use the public GitHub Releases API at most once a day on app startup. You can disable automatic checks or check manually in Settings. No kDrive token or photos are sent to GitHub; GitHub receives normal connection information such as your IP address. Updates open the matching FOSS/nonFOSS APK in your browser and require manual installation.

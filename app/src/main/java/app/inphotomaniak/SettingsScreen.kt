@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
         }
         Text(stringResource(R.string.cache_description))
         Text(stringResource(R.string.metadata_description),style=MaterialTheme.typography.bodyMedium)
+        HorizontalDivider()
+        UpdateSettings(model.updates)
+        HorizontalDivider()
         Text(stringResource(R.string.app_about,BuildConfig.VERSION_NAME,stringResource(R.string.edition_name)),style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={confirm=true},enabled=!s.busy && !s.scanning && !s.syncing) { Text(stringResource(R.string.sign_out_clear)) }
     }

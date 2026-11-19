@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.3 — 2026-11-19
+
+- Add optional daily GitHub release checks, update notifications, and manual checks in Settings. Download the matching edition through the browser.
+
 ## 0.8.2 — 2026-11-19
 
 - Show Pause/Play until the initial scan completes, then enable automatic and manual incremental refresh. Manual Play checks for new files while preserving completed metadata.

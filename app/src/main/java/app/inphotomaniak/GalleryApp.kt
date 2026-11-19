@@ -18,7 +18,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GalleryApp(model: GalleryModel = viewModel()) {
     val s by model.state.collectAsStateWithLifecycle()
+    LaunchedEffect(model) { model.updates.checkAutomatically() }
     GalleryContent(s,model)
+    UpdateNotice(model.updates)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -37,6 +37,7 @@ class GalleryModel @JvmOverloads constructor(
     private val scanClientFactory: (Account) -> DriveClient = { DriveClient(it) }
 ): AndroidViewModel(app), DefaultLifecycleObserver {
     internal val casting = CastController(app,viewModelScope)
+    internal val updates = AppUpdates(app,viewModelScope)
     private val settings = Settings(app)
     private val db = AssetDb(app)
     private val collectionDb = CollectionDb(app)
@@ -322,6 +323,7 @@ class GalleryModel @JvmOverloads constructor(
         cleared=true;resumeScan=false
         if(Looper.myLooper()==Looper.getMainLooper()) scanLifecycle.removeObserver(this)
         else Handler(Looper.getMainLooper()).post { scanLifecycle.removeObserver(this) }
+        updates.close()
         pauseScan();casting.close();driveClient?.http?.dispatcher?.cancelAll();images?.shutdown()
         val running=scan
         if(running!=null && !running.isCompleted) running.invokeOnCompletion { db.close() } else db.close()

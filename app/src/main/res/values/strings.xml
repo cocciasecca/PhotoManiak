@@ -168,4 +168,17 @@
     <string name="pause_initial_scan">Pause initial scan</string>
     <string name="resume_initial_scan">Resume initial scan</string>
     <string name="initial_scan_paused">Initial scan paused — tap Play to check for new files and continue.</string>
+    <string name="updates">Updates</string>
+    <string name="automatic_updates">Automatically check for updates</string>
+    <string name="updates_privacy">Checks public GitHub releases on app startup, at most once a day. No kDrive token or photos are sent. Downloads open in your browser; installation is manual.</string>
+    <string name="check_updates">Check for updates</string>
+    <string name="checking_updates">Checking for updates…</string>
+    <string name="updates_none">No newer release is available for this edition.</string>
+    <string name="updates_failed">Could not check for updates. Try again later.</string>
+    <string name="update_browser_failed">Could not open a browser. Download the update from the PhotoManiak GitHub releases page.</string>
+    <string name="update_available">PhotoManiak %1$s is available</string>
+    <string name="update_description">Download the %1$s edition from GitHub. Install it over your current app to keep your settings.</string>
+    <string name="download_update">Download update</string>
+    <string name="download_update_edition">Download %1$s update</string>
+    <string name="update_later">Later</string>
 </resources>

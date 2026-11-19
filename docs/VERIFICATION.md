@@ -1,5 +1,11 @@
 # Verification
 
+## Version 0.8.3 — update notifications (November 19, 2026)
+
+- Both editions pass Android Lint and all JVM tests (66 FOSS / 75 nonFOSS). Release tests cover numeric version comparisons, draft/prerelease filtering, edition matching, expected GitHub asset URLs, and daily check timing.
+- Three Android 15 FOSS UI tests pass: dismissing and remembering an update notice, persisting disabled automatic checks, and rejecting a cached download from another edition. Tests use fixture release data and do not install updates.
+- Update checks use a separate unauthenticated HTTP client and preferences, with bounded responses and timeouts. APK download/installation is handed to the browser/user. This feature is included starting with 0.8.3. Release APKs are built and published by GitHub Actions.
+
 ## Version 0.8.2 — initial scan controls (November 19, 2026)
 
 - Both editions pass Android Lint and all JVM tests (62 FOSS / 71 nonFOSS). The new test confirms manual resume rediscovers newly added files without rereading completed metadata for unchanged files.
