@@ -74,7 +74,7 @@ internal class LibraryScan(
     }
     suspend fun run(full: Boolean = false, recheckFolders: Boolean = false, onStarted: () -> Unit = {}): Int {
         val key=ScanCheckpoint.key(drive,rules)
-        // Explicit Play rediscovers new files; automatic foreground resume keeps the saved cursor.
+        // Play and cold startup can rediscover new files; foreground resume keeps the saved cursor.
         // Only full refresh invalidates dates already read for unchanged files.
         var job=(if(full || recheckFolders) null else store.checkpoint()?.takeIf { it.key==key })
             ?: ScanCheckpoint(key,full,rules.included.sorted()).also { store.saveScan(it,reset=true) }

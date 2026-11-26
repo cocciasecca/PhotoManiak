@@ -67,6 +67,7 @@ class GalleryModel @JvmOverloads constructor(
         mutable.value = GalleryState(ready=true,account=account,rules=rules,initialScanComplete=initialComplete,thumbnailSize=settings.thumbnailSize(),themeMode=settings.themeMode(),colorPalette=settings.colorPalette(),customColor=settings.customColor(),collections=if(account==null) Collections() else collectionDb.snapshot(),syncFolder=settings.syncFolder(),pendingEdits=collectionDb.pendingCount(),lastSync=settings.lastCollectionSync(),assets=indexed)
     }; manualStop=settings.scanStopped();resumeScan=!manualStop && state.value.account!=null && state.value.rules.included.isNotEmpty()
         if(manualStop) mutable.update { it.copy(progress=getApplication<Application>().getString(if(state.value.initialScanComplete) R.string.scan_stopped else R.string.initial_scan_paused)) }
+        recheckScanFolders=resumeScan && !state.value.initialScanComplete
         syncCollections();startScanIfNeeded()
     } }
     private fun connect(account: Account) {

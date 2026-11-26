@@ -11,6 +11,7 @@ import okhttp3.tls.HeldCertificate
 import okhttp3.tls.HandshakeCertificates
 import org.junit.*
 import org.junit.Assert.*
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class ScanResumeDeviceTest {
@@ -55,7 +56,7 @@ class ScanResumeDeviceTest {
         main { owner=Owner();owner.lifecycle.currentState=Lifecycle.State.STARTED }
         return owner
     }
-    @Test fun backgroundCancelsOnlyScanAndReturnResumesSavedPage() {
+    @Test fun reopeningDuringInitialScanRelistsFoldersBeforeContinuing() {
         val next=AtomicInteger()
         server.dispatcher=object: Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse = when {
@@ -74,7 +75,9 @@ class ScanResumeDeviceTest {
         val restored=model(owner)
         main { owner.lifecycle.currentState=Lifecycle.State.STARTED }
         awaitCondition { next.get()==2 && !restored.state.value.scanning }
-        assertEquals(3,server.requestCount)
+        assertEquals(4,server.requestCount)
+        val cursors=(1..4).map { server.takeRequest(1, TimeUnit.SECONDS)!!.requestUrl!!.queryParameter("cursor") }
+        assertEquals(listOf(null,"next",null,"next"),cursors)
         AssetDb(context).use { assertNull(it.checkpoint()) }
     }
     @Test fun manualStopSurvivesForegroundReturnAndModelRecreation() {

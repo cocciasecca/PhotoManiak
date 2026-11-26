@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Reopening PhotoManiak during an unfinished initial scan checks the selected kDrive folders for new files before resuming capture-date analysis. Completed metadata for unchanged files is reused.
+- A manual pause still persists until you tap Play.
+
 ## 0.8.3 — 2026-11-19
 
 - Add optional daily GitHub release checks, update notifications, and manual checks in Settings. Download the matching edition through the browser.
