@@ -2,6 +2,7 @@
 
 ## 0.9.0
 
+- Offer automatic APK downloads on first launch, with an option to receive in-app update notices only. Android handles installation confirmation.
 - Reopening PhotoManiak during an unfinished initial scan checks the selected kDrive folders for new files before resuming capture-date analysis. Completed metadata for unchanged files is reused.
 - A manual pause still persists until you tap Play.
 

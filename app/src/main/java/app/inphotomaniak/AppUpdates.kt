@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.update
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -49,23 +50,52 @@ internal object ReleaseUpdates {
 internal data class UpdateState(
     val automatic: Boolean = true, val checking: Boolean = false,
     val available: AvailableUpdate? = null, val showNotice: Boolean = false,
-    val message: Int? = null
+    val message: Int? = null,
+    val autoDownload: Boolean? = null,
+    val downloading: Boolean = false,
+    val apk: File? = null
 )
 
 /** Separate transport and preferences: no kDrive token or account data reaches GitHub. */
-internal class AppUpdates(context: Context, private val scope: CoroutineScope) {
+internal class AppUpdates(private val context: Context, private val scope: CoroutineScope) {
     private val prefs=context.getSharedPreferences("app_updates",Context.MODE_PRIVATE)
     private val edition=context.getString(R.string.edition_name)
     private val http=OkHttpClient.Builder().callTimeout(20,TimeUnit.SECONDS)
         .connectTimeout(10,TimeUnit.SECONDS).readTimeout(15,TimeUnit.SECONDS)
         .followRedirects(false).build()
+    private val downloads = UpdateApk(context, http)
+    private var attemptedDownload: AvailableUpdate? = null
     private val cached=prefs.getString("available_version",null)?.takeIf { prefs.getString("available_edition",null)==edition && ReleaseUpdates.newer(it,BuildConfig.VERSION_NAME) }
         ?.let { AvailableUpdate(it,edition) }
     private val mutable=MutableStateFlow(UpdateState(
         automatic=prefs.getBoolean("automatic",true),available=cached,
+        autoDownload=if(prefs.contains("auto_download")) prefs.getBoolean("auto_download",false) else null,
         showNotice=cached!=null && prefs.getString("dismissed_version",null)!=cached.version
     ))
     val state=mutable.asStateFlow()
+    fun autoDownload(enabled: Boolean) {
+        prefs.edit().putBoolean("auto_download",enabled).apply()
+        if(enabled) attemptedDownload=null
+        mutable.update { it.copy(autoDownload=enabled,apk=if(enabled) it.apk else null) }
+        if(enabled && !state.value.automatic) automatic(true)
+    }
+    fun downloadAutomatically(update: AvailableUpdate) {
+        val current=state.value
+        if(current.autoDownload!=true || !current.showNotice || current.available!=update ||
+            current.downloading || attemptedDownload==update) return
+        attemptedDownload=update
+        mutable.update { it.copy(downloading=true,message=null) }
+        scope.launch {
+            try {
+                val apk=withContext(Dispatchers.IO) { downloads.fetch(update) }
+                mutable.update { if(it.autoDownload==true && it.showNotice && it.available==update) it.copy(apk=apk) else it }
+            } catch(e: CancellationException) { throw e }
+            catch(_: Exception) {
+                mutable.update { if(it.available==update) it.copy(message=R.string.update_apk_failed) else it }
+            } finally { mutable.update { it.copy(downloading=false) } }
+        }
+    }
+    fun installerFailed() { mutable.update { it.copy(apk=null,message=R.string.update_apk_failed) } }
     fun automatic(enabled: Boolean) {
         prefs.edit().putBoolean("automatic",enabled).apply()
         mutable.update { it.copy(automatic=enabled) }
@@ -93,7 +123,7 @@ internal class AppUpdates(context: Context, private val scope: CoroutineScope) {
                     }
                 }
                 prefs.edit().putString("available_version",update?.version).putString("available_edition",edition).apply()
-                mutable.update { it.copy(available=update,showNotice=update!=null && (manual || prefs.getString("dismissed_version",null)!=update.version),
+                mutable.update { it.copy(available=update,apk=it.apk.takeIf { _ -> it.available==update },showNotice=update!=null && (manual || prefs.getString("dismissed_version",null)!=update.version),
                     message=if(manual && update==null) R.string.updates_none else null) }
             } catch(e: CancellationException) { throw e }
             catch(_: Exception) { if(manual) mutable.update { it.copy(message=R.string.updates_failed) } }
@@ -102,8 +132,8 @@ internal class AppUpdates(context: Context, private val scope: CoroutineScope) {
     }
     fun dismiss() {
         state.value.available?.let { prefs.edit().putString("dismissed_version",it.version).apply() }
-        mutable.update { it.copy(showNotice=false) }
+        mutable.update { it.copy(showNotice=false,apk=null) }
     }
     fun downloadFailed() { mutable.update { it.copy(message=R.string.update_browser_failed) } }
-    fun close() { http.dispatcher.cancelAll() }
+    fun close() { http.dispatcher.cancelAll(); downloads.close() }
 }

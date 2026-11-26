@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
     val s by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(model) { model.updates.checkAutomatically() }
     GalleryContent(s,model)
+    UpdateDownloadPreference(model.updates)
     UpdateNotice(model.updates)
 }
 

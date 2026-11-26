@@ -19,7 +19,7 @@ class UpdateUiTest {
     @Before fun setup() { prefs.edit().clear().commit() }
     @After fun cleanup() { controllers.forEach { it.close() };scope.cancel();prefs.edit().clear().commit() }
     @Test fun updateNoticeCanBeDismissedAndStaysDismissedAfterRecreation() {
-        prefs.edit().putString("available_version","99.0.0").putString("available_edition",context.getString(R.string.edition_name)).commit()
+        prefs.edit().putBoolean("auto_download",false).putString("available_version","99.0.0").putString("available_edition",context.getString(R.string.edition_name)).commit()
         val updates=controller()
         compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { UpdateNotice(updates) } }
         compose.onNodeWithText("PhotoManiak 99.0.0 is available").assertIsDisplayed()
@@ -32,10 +32,17 @@ class UpdateUiTest {
     @Test fun automaticChecksCanBeDisabledAndPreferencePersists() {
         val updates=controller()
         compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { Column { UpdateSettings(updates) } } }
-        compose.onNode(isToggleable()).performClick()
+        compose.onAllNodes(isToggleable())[0].performClick()
         assertFalse(updates.state.value.automatic)
         assertFalse(controller().state.value.automatic)
         compose.onNodeWithText("Check for updates").assertIsEnabled()
+    }
+    @Test fun firstLaunchStoresNotifyOnlyChoice() {
+        val updates=controller()
+        compose.setContent { PhotoManiakTheme(ThemeMode.LIGHT) { UpdateDownloadPreference(updates) } }
+        compose.onNodeWithText("Notify me only").performClick()
+        compose.onNodeWithText("Notify me only").assertDoesNotExist()
+        assertEquals(false,controller().state.value.autoDownload)
     }
     @Test fun anotherEditionDoesNotReuseAnUnverifiedCachedDownload() {
         val other=if(context.getString(R.string.edition_name)=="FOSS") "nonFOSS" else "FOSS"
