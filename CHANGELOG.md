@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- The automatic download prompt appears when no choice has been saved, including after an in-place update from a build without that preference. Existing choices are preserved.
+
 ## 0.9.0
 
 - Offer automatic APK downloads on first launch, with an option to receive in-app update notices only. Android handles installation confirmation.
